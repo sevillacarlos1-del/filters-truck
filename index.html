@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B1E36">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Sistema comercial Truck Filters, c.a. — Catálogo técnico, pedidos en ruta y control de oficina.">
+<title>Truck Filters, c.a. — Sistema Comercial</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: { extend: {
+    colors: {
+      navy: {950:'#071426',900:'#0B1E36',800:'#12294A',700:'#1A3760',600:'#234A7C',500:'#2E5C93',100:'#DCE5F0',50:'#EEF3F9'},
+      steel:{50:'#F5F7F9',100:'#ECEFF3',200:'#D9DFE6',300:'#B8C1CC',400:'#8894A3',500:'#616D7C',600:'#49525E'},
+      acc:  {DEFAULT:'#FFB000',dark:'#C98A00',soft:'#FFF3D6'}
+    },
+    fontFamily: {
+      disp:['Oswald','sans-serif'],
+      body:['Barlow','sans-serif'],
+      mono:['"IBM Plex Mono"','monospace']
+    },
+    boxShadow: { hard:'3px 3px 0 0 #0B1E36', hardsm:'2px 2px 0 0 #0B1E36' }
+  }}
+};
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Barlow:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<style type="text/tailwindcss">
+@layer components {
+    /* Base de botones compartida (evita @apply de clases custom, que Tailwind no resuelve) */
+    .btn, .btn-amber, .btn-navy, .btn-line, .btn-ok, .btn-bad {
+        @apply inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    }
+    .btn-amber { @apply bg-acc text-navy-950 hover:bg-acc-dark shadow-sm; }
+    .btn-navy  { @apply bg-navy-800 text-white hover:bg-navy-700 shadow-sm; }
+    .btn-line  { @apply border border-steel-300 bg-white text-navy-900 hover:bg-steel-50; }
+    .btn-ok    { @apply bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm; }
+    .btn-bad   { @apply bg-red-600 text-white hover:bg-red-700 shadow-sm; }
+
+    .input      { @apply w-full rounded-xl border border-steel-300 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-steel-400 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/20 transition-all; }
+    .lbl        { @apply block text-[11px] font-semibold text-navy-700 uppercase tracking-wider mb-1; }
+    .card       { @apply bg-white border border-steel-200 rounded-2xl shadow-sm p-5; }
+    .tag        { @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold; }
+    .chip       { @apply px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap; }
+    .th         { @apply px-4 py-3 text-left text-[11px] font-bold text-steel-500 uppercase tracking-wider bg-steel-50 border-b border-steel-200; }
+    .td         { @apply px-4 py-3 text-sm text-navy-900 border-b border-steel-100; }
+    .sec-title  { @apply text-base font-bold text-navy-900 tracking-tight; }
+    .kicker     { @apply text-[11px] font-bold text-steel-400 uppercase tracking-widest; }
+    /* flex-1 + min-w-0: distribuye parejo con 4 o 6 pestañas sin desbordar en móvil */
+    .nav-item   { @apply relative flex flex-col items-center justify-center gap-1 py-2 px-1 flex-1 min-w-0 cursor-pointer transition-colors duration-200; }
+}
+</style>
+
+<style>
+/* ---- Firma visual industrial ---- */
+.hazard { background: repeating-linear-gradient(-45deg,#FFB000 0 12px,#0B1E36 12px 24px); }
+.blueprint {
+  background-color:#fff;
+  background-image:linear-gradient(#e7edf3 1px,transparent 1px),linear-gradient(90deg,#e7edf3 1px,transparent 1px);
+  background-size:14px 14px;
+}
+/* Pulsos y estados */
+@keyframes livepulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.8)} }
+.xlive-dot { animation:livepulse 1.6s ease-in-out infinite; }
+@keyframes slideup { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.anim-up { animation:slideup .25s ease both; }
+@keyframes fadein { from{opacity:0} to{opacity:1} }
+.anim-fade { animation:fadein .18s ease both; }
+/* Scrollbar sobrio */
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:#ECEFF3}
+::-webkit-scrollbar-thumb{background:#B8C1CC;border-radius:6px}
+::-webkit-scrollbar-thumb:hover{background:#8894A3}
+/* Ocultar flechas de inputs numéricos */
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+</style>
+</head>
+
+<body class="bg-steel-100 font-body text-navy-900 antialiased">
+
+<!-- Defs SVG compartidos -->
+<svg width="0" height="0" class="absolute" aria-hidden="true">
+  <defs>
+    <pattern id="gridp" width="14" height="14" patternUnits="userSpaceOnUse">
+      <path d="M14 0H0V14" fill="none" stroke="#e7edf3" stroke-width="1"/>
+    </pattern>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#9A6B00"/>
+    </marker>
+  </defs>
+</svg>
+
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast-root" class="fixed top-4 right-4 left-4 sm:left-auto z-[90] flex flex-col gap-2 items-end pointer-events-none"></div>
+
+<script>
+'use strict';
+
+/* ============================ 1. CONFIGURACIÓN ============================ */
+const EMPRESA    = { name:'Truck Filters, c.a.', rif:'J-40127144-8', addr:'Av. Principal, Zona Industrial Municipal Norte, Galpón 4, Valencia — Edo. Carabobo', tel:'+58 241-500.22.44' };
+
+const DB_KEY     = 'tf_db_v2';
+const SESS_KEY   = 'tf_session_v2';
+const CART_PRE   = 'tf_cart_';
+const IVA_RATE   = 0.16;
+const ADMIN_USER = { pass:'XTRUCK2025', name:'Administración', role:'admin' };
+
+/* USERS es SOLO la semilla de fábrica: la lista real y editable vive en db.sellers (localStorage).
+   migrateDB() siembra estos valores la primera vez y mantiene compatibilidad con bases antiguas. */
+const USERS = [];
+
+const VOL_TIERS = [[50,8],[25,5],[10,3]];
+const CONDS = {
+  normal:  { l:'Ruta pavimentada (normal)',       f:1.0  },
+  severa:  { l:'Vía grave / mixta (severa)',      f:0.65 },
+  extrema: { l:'Alta polvorienta (extrema)',      f:0.45 }
+};
+
+const TYPE_META = {
+  aceite:       { l:'Aceite',        icon:'fa-oil-can'   },
+  aire:         { l:'Aire',          icon:'fa-wind'      },
+  combustible:  { l:'Combustible',   icon:'fa-gas-pump'  },
+  'hidráulico': { l:'Hidráulico',    icon:'fa-gears'     },
+  cabina:       { l:'Cabina / A.C.', icon:'fa-snowflake' },
+  componente:   { l:'Componente',    icon:'fa-microchip' }
+};
+
+const ST = {
+  pendiente:  { l:'Pendiente',  chip:'bg-amber-50 text-amber-800 border-amber-300',       ic:'fa-hourglass-half' },
+  aprobado:   { l:'Aprobado',   chip:'bg-blue-50 text-blue-800 border-blue-300',          ic:'fa-circle-check'   },
+  despachado: { l:'Despachado', chip:'bg-emerald-50 text-emerald-800 border-emerald-300', ic:'fa-truck-fast'     },
+  rechazado:  { l:'Rechazado',  chip:'bg-red-50 text-red-700 border-red-300',             ic:'fa-circle-xmark'   }
+};
+
+/* ============================ 2. CATÁLOGO BASE ============================ */
+const PRODUCTS = [];
+
+const ENGINES = [
+  { id:'isx15', label:'Cummins ISX15 / X15 — tráctil', oil:'TF-55102', fuel:'TF-33021', airP:'TF-22108', iv:{oil:25000,fuel:20000,airP:60000} },
+  { id:'mx13',  label:'PACCAR MX-13 — Kenworth T680',  oil:'TF-55102', fuel:'TF-33021', airP:'TF-22108', iv:{oil:30000,fuel:20000,airP:60000} }
+];
+
+/* ============================ 3. UTILIDADES ============================ */
+const $      = s => document.querySelector(s);
+const round2 = v => Math.round(v * 100) / 100;
+const money  = n => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+const esc    = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+const fD     = ts => new Date(ts).toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit', year:'numeric' });
+const fT     = ts => new Date(ts).toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
+const fDT    = ts => fD(ts) + ' · ' + fT(ts);
+const t0     = () => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); };
+const uid    = () => 'P' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const volDisc = q => { for (const [min, d] of VOL_TIERS) if (q >= min) return d; return 0; };
+const RIF_OK = r => /^[JVGPE]-\d{8}-\d(\/\d)?$/.test(String(r).trim().toUpperCase());
+const initialsOf = n => String(n || '').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+const stChip = st => { const s = ST[st] || ST.pendiente; return `<span class="tag border ${s.chip}"><i class="fa-solid ${s.ic}"></i>${s.l}</span>`; };
+
+const FILTER_IMG_FALLBACK = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="#EEF3F9"/><g fill="none" stroke="#B8C1CC" stroke-width="3"><rect x="270" y="70" width="100" height="150" rx="10"/><line x1="270" y1="102" x2="370" y2="102"/><line x1="270" y1="120" x2="370" y2="120"/><rect x="295" y="220" width="50" height="22"/></g><text x="320" y="300" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#8894A3">Fotografía no disponible</text><text x="320" y="326" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#B8C1CC">assets/img/filters/</text></svg>`
+);
+
+function toast(msg, type='info', ms=3400) {
+  const root = $('#toast-root'); if (!root) return;
+  const el = document.createElement('div');
+  el.className = `max-w-sm w-full bg-white border-l-4 rounded-xl shadow-lg p-3 text-xs font-medium pointer-events-auto transition-all duration-300 translate-y-2 opacity-0 ${
+    type === 'ok'   ? 'border-emerald-500 text-navy-900' :
+    type === 'warn' ? 'border-amber-500 text-navy-900'  :
+    type === 'bad'  ? 'border-red-500 text-navy-900'    : 'border-navy-900 text-navy-900'
+  }`;
+  el.innerHTML = msg;
+  root.appendChild(el);
+  requestAnimationFrame(() => el.classList.remove('translate-y-2', 'opacity-0'));
+  setTimeout(() => {
+    el.classList.add('translate-y-2', 'opacity-0');
+    setTimeout(() => el.remove(), 300);
+  }, ms);
+}
+
+/* ============================ 4. MODALES ============================ */
+let pendingConfirm = null;
+let modalPrevFocus = null;
+const modalOpen = () => $('#modal-root').childElementCount > 0;
+
+function openModal(html, wide=false) {
+  const root = $('#modal-root');
+  modalPrevFocus = document.activeElement;
+  pendingConfirm = null;
+  root.innerHTML = `
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-900/60 backdrop-blur-sm anim-fade" data-close="1">
+      <div class="bg-white rounded-2xl shadow-2xl w-full ${wide ? 'max-w-4xl' : 'max-w-lg'} overflow-hidden border border-steel-200 flex flex-col max-h-[90vh]" data-modal-panel="1" tabindex="-1">
+        ${html}
+      </div>
+    </div>`;
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => {
+    const f = root.querySelector('[data-modal-panel="1"]');
+    if (f) { try { f.focus({ preventScroll:true }); } catch(e){} }
+  });
+}
+
+function closeModal() {
+  const root = $('#modal-root');
+  if (root && root.childElementCount) root.innerHTML = '';
+  pendingConfirm = null;
+  if (document.body.style.overflow === 'hidden') document.body.style.overflow = '';
+  if (modalPrevFocus && document.contains(modalPrevFocus)) {
+    try { modalPrevFocus.focus({ preventScroll:true }); } catch(e){}
+  }
+  modalPrevFocus = null;
+}
+
+document.addEventListener('click', e => {
+  if (!modalOpen() || !(e.target instanceof Element)) return;
+  if (e.target.closest('[data-close]')) { e.preventDefault(); closeModal(); return; }
+  if (!e.target.closest('[data-modal-panel]')) closeModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && modalOpen()) { e.preventDefault(); closeModal(); }
+});
+
+function confirmDialog(title, msg, okLabel, onOk, danger=true) {
+  pendingConfirm = typeof onOk === 'function' ? onOk : null;
+  openModal(`
+    <div class="p-6 space-y-4">
+      <h3 class="text-base font-bold text-navy-900">${esc(title)}</h3>
+      <p class="text-sm text-steel-600">${msg}</p>
+      <div class="flex justify-end gap-3 pt-2">
+        <button onclick="closeModal()" class="btn-line px-4 py-2 text-xs rounded-xl">Cancelar</button>
+        <button onclick="runConfirm()" class="px-4 py-2 text-xs rounded-xl font-bold text-white ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-navy-900 hover:bg-navy-800'}">${esc(okLabel)}</button>
+      </div>
+    </div>`);
+}
+
+function runConfirm() {
+  const fn = pendingConfirm;
+  closeModal();
+  if (fn) { try { fn(); } catch(err) { console.error(err); toast('Ocurrió un error al ejecutar la acción.', 'bad'); } }
+}
+
+/* ============================ 5. DIBUJOS TÉCNICOS SVG ============================ */
+function logoSVG(size=40) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+    <path d="M32 3 L57 17 V47 L32 61 L7 47 V17 Z" fill="#0B1E36" stroke="#FFB000" stroke-width="2.5"/>
+    <text x="32" y="36" text-anchor="middle" font-family="Oswald,sans-serif" font-weight="700" font-size="19" fill="#FFB000">TF</text>
+    <text x="32" y="52" text-anchor="middle" font-family="Barlow,sans-serif" font-weight="600" font-size="6" fill="#fff" letter-spacing="2">FILTERS</text>
+  </svg>`;
+}
+
+const dimH = (x1, x2, y, label) => `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#9A6B00" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="${(x1+x2)/2}" y="${y-4}" text-anchor="middle" font-size="9" fill="#9A6B00" font-family="Barlow,sans-serif" font-weight="600">${label}</text>`;
+const dimV = (y1, y2, x, label) => `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#9A6B00" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="${x+6}" y="${(y1+y2)/2+3}" font-size="9" fill="#9A6B00" font-family="Barlow,sans-serif" font-weight="600">${label}</text>`;
+const L  = 'stroke="#2C4562" stroke-width="1.6" fill="none" stroke-linejoin="round"';
+const LF = f => `stroke="#2C4562" stroke-width="1.6" fill="${f}" stroke-linejoin="round"`;
+
+function techSVG(p) {
+  const S = p.specs || {}; const h = S['Altura'] || ''; let body = '';
+  if (p.style === 'spin') {
+    body = `<rect x="80" y="30" width="60" height="76" rx="6" ${LF('#EDF1F5')}/>
+      <line x1="80" y1="42" x2="140" y2="42" ${L}/><line x1="80" y1="50" x2="140" y2="50" ${L}/>
+      <rect x="92" y="106" width="36" height="12" ${LF('#E2E8EE')}/>
+      <line x1="70" y1="118" x2="150" y2="118" ${L}/>
+      ${S['Diám. exterior'] ? dimH(80, 140, 22, S['Diám. exterior']) : ''}${h ? dimV(30, 118, 158, h) : ''}`;
+  } else if (p.style === 'air') {
+    const dAir = S['Diám. ext./int.'] ? S['Diám. ext./int.'].split('/')[0].trim() + ' Ø' : '';
+    body = `<rect x="94" y="14" width="32" height="18" rx="2" ${LF('#E2E8EE')}/>
+      <rect x="66" y="32" width="88" height="92" rx="42" ${LF('#fff')}/>
+      <path d="M70 62 Q110 74 150 62" ${L}/><path d="M70 92 Q110 104 150 92" ${L}/>
+      ${dAir ? dimH(66, 154, 132, dAir) : ''}${h ? dimV(14, 124, 162, h) : ''}`;
+  } else if (p.style === 'sep') {
+    body = `<rect x="80" y="18" width="60" height="40" rx="4" ${LF('#E2E8EE')}/>
+      <path d="M84 58 L136 58 L128 116 L92 116 Z" ${LF('rgba(232,240,246,.6)')}/>
+      ${h ? dimV(18, 126, 162, h) : ''}${S['Separación'] ? `<text x="110" y="140" text-anchor="middle" font-family="monospace" font-size="7.5" fill="#616D7C">${S['Separación']}</text>` : ''}`;
+  } else {
+    body = `<rect x="82" y="22" width="56" height="100" rx="4" ${LF('#fff')}/>
+      <line x1="88" y1="30" x2="132" y2="44" ${L}/><line x1="88" y1="48" x2="132" y2="62" ${L}/>
+      ${S['Diám. exterior'] ? dimH(82, 138, 14, S['Diám. exterior']) : ''}${h ? dimV(22, 122, 158, h) : ''}`;
+  }
+  return `<svg viewBox="0 0 220 150" class="h-32 w-auto max-w-[85%]" aria-hidden="true">
+    <rect x="0" y="0" width="220" height="150" fill="url(#gridp)" stroke="none"/>
+    ${body}
+  </svg>`;
+}
+
+/* ============================ 6. CAPA DE DATOS ============================ */
+function seedDB() {
+  const now = Date.now(), H = 3600e3;
+  const mk = (n, seller, client, items, status, hrsAgo, extraHist) => {
+    const u = USERS.find(x => x.id === seller) || { name:'Vendedor', zone:'General' };
+    const sub = round2(items.reduce((a, i) => a + i.qty * i.price, 0));
+    const tax = round2(sub * IVA_RATE);
+    return {
+      id: uid(), number: `TF26-${String(n).padStart(4, '0')}`, sellerId: seller, sellerName: u.name,
+      ts: now - hrsAgo * H, client, items, subtotal: sub, tax, total: round2(sub + tax), status,
+      history: extraHist || [{ status:'pendiente', ts: now - hrsAgo * H, by: seller }],
+      rejectReason: ''
+    };
+  };
+
+  const o1 = mk(1, 'VEND-001',
+    { name:'Distribuidora Los Andes, C.A.', rif:'J-30184726-5', contact:'José Pérez', phone:'0414-4112233', address:'Zona Industrial El Piñonal' },
+    [
+      { code:'TF-55102', name:'Filtro de aceite giratorio HD', qty:12, price:11.90, base:12.50 },
+      { code:'TF-33021', name:'Elemento de combustible 2 µm', qty:24, price:14.60, base:15.75 }
+    ], 'pendiente', 9);
+
+  const o2 = mk(2, 'VEND-002',
+    { name:'Repuestos El Trigal', rif:'J-40555123-9', contact:'María Salazar', phone:'0412-8899776', address:'Av. Paseo Cabriales' },
+    [
+      { code:'TF-22108', name:'Filtro de aire primario radial', qty:4, price:34.90, base:34.90 },
+      { code:'TF-44105', name:'Filtro hidráulico de alta presión', qty:4, price:28.50, base:28.50 }
+    ], 'aprobado', 6, [
+      { status:'pendiente', ts: now - 6 * H, by:'VEND-002' },
+      { status:'aprobado',  ts: now - 4.5 * H, by:'Administración' }
+    ]);
+
+  const o3 = mk(3, 'VEND-001',
+    { name:'Transporte Bolívar C.A.', rif:'G-20012458-1', contact:'Ramón Utrera', phone:'0416-6411122', address:'Autopista Valencia-Puerto Cabello' },
+    [
+      { code:'TF-88214', name:'Válvula reguladora de presión', qty:2, price:31.00, base:31.00 }
+    ], 'despachado', 3, [
+      { status:'pendiente',  ts: now - 3 * H, by:'VEND-001' },
+      { status:'aprobado',   ts: now - 3 * H, by:'Administración' },
+      { status:'despachado', ts: now - 2 * H, by:'Administración' }
+    ]);
+
+  return {
+    products: PRODUCTS.map(p => ({ ...p })),
+    orders: [o1, o2, o3],
+    counter: 4,
+    sellers: USERS.map(u => ({ ...u, active: true })),
+    jornada: { 'VEND-001': { start: now - 9.5 * H, end: null }, 'VEND-002': { start: now - 8.5 * H, end: null } },
+    activity: [
+      { ts: now - 2 * H,   ic:'fa-truck-fast',    t:'Pedido TF26-0003 despachado — Transporte Bolívar' },
+      { ts: now - 4.5 * H, ic:'fa-circle-check',  t:'Pedido TF26-0002 aprobado por Administración' },
+      { ts: now - 9 * H,   ic:'fa-file-invoice',  t:'Pedido TF26-0001 generado por Carlos Mendoza' }
+    ]
+  };
+}
+
+let db = null;
+
+/* Normaliza la base: siembra/migra vendedores dinámicos y garantiza estructuras.
+   Compatible con bases tf_db_v2 creadas antes de este módulo. */
+function migrateDB() {
+  if (!Array.isArray(db.sellers)) db.sellers = USERS.map(u => ({ ...u, active: true }));
+  db.sellers = db.sellers.map(s => ({ active: true, ...s })); /* default true salvo que venga false guardado */
+  if (!Array.isArray(db.activity)) db.activity = [];
+  if (typeof db.jornada !== 'object' || !db.jornada) db.jornada = {};
+  if (!db.counter) db.counter = db.orders.length + 1;
+}
+
+function loadDB() {
+  try { db = JSON.parse(localStorage.getItem(DB_KEY)); } catch(e){ db = null; }
+  if (!db || !Array.isArray(db.products) || !Array.isArray(db.orders)) { db = seedDB(); }
+  migrateDB();
+  saveDB();
+}
+function saveDB() { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+loadDB();
+
+/* prod() lee SIEMPRE db.products para que el inventario editado afecte catálogo y carrito */
+const prod = code => (db && db.products ? db.products : PRODUCTS).find(p => p.code === code);
+
+/* ---- Lista dinámica de vendedores (fuente única de verdad para todo el sistema) ---- */
+const getSellers     = () => db.sellers;
+const activeSellers  = () => getSellers().filter(s => s.active !== false);
+const sellerById     = id => getSellers().find(s => s.id === id);
+function nextSellerId() {
+  let max = 0;
+  getSellers().forEach(s => { const m = /^VEND-(\d+)$/.exec(s.id || ''); if (m) max = Math.max(max, parseInt(m[1], 10)); });
+  return 'VEND-' + String(max + 1).padStart(3, '0');
+}
+
+function logActivity(ic, t) {
+  db.activity.unshift({ ts: Date.now(), ic, t });
+  db.activity = db.activity.slice(0, 30);
+}
+
+/* ============================ 7. ESTADO GLOBAL ============================ */
+let session = null;
+try { session = JSON.parse(sessionStorage.getItem(SESS_KEY) || 'null'); } catch(e){ session = null; }
+
+let cart = [];
+const ui = {
+  view: 'catalog', /* valor base; defaultView() lo ajusta según el rol al iniciar */
+  catQ: '', catType: 'todos',
+  tool: 'plan', toolQ: '', planEngine: 'isx15', planCond: 'normal', planKm: 8000,
+  filterQ: '',
+  admin: { q:'', st:'todos' },
+  invQ: ''
+};
+
+/* ============================ 8. CARRITO ============================ */
+function loadCart() { try { cart = JSON.parse(localStorage.getItem(CART_PRE + session.id) || '[]'); } catch(e){ cart = []; } }
+function saveCart() { localStorage.setItem(CART_PRE + session.id, JSON.stringify(cart)); if (session) setNav(); }
+const cartCount = () => cart.reduce((a, l) => a + l.qty, 0);
+
+function addToCart(code, qty=1, silent=false) {
+  const p = prod(code);
+  if (!p) return;
+  if (p.stock <= 0) { toast('<b>' + esc(p.name) + '</b> está agotado.', 'warn'); return; }
+  const d = volDisc(qty), pu = round2(p.price * (1 - d / 100));
+  const line = cart.find(l => l.code === code && Math.abs(l.price - pu) < 0.001);
+  const current = line ? line.qty : 0;
+  if (current + qty > p.stock) { toast(`Stock disponible de <b>${esc(p.code)}</b>: <b>${p.stock}</b> u.`, 'warn'); return; }
+  if (line) line.qty += qty; else cart.push({ code, qty, price: pu, base: p.price, name: p.name });
+  saveCart();
+  if (!silent) toast(`<b>${esc(p.name)}</b> agregado al pedido (${qty} u${qty > 1 ? 'ds' : ''}).`, 'ok');
+}
+
+function changeQty(i, delta) {
+  cart[i].qty = Math.max(1, cart[i].qty + delta);
+  cart[i].price = round2(cart[i].base * (1 - volDisc(cart[i].qty) / 100));
+  saveCart(); renderView();
+}
+
+function removeLine(i){ cart.splice(i, 1); saveCart(); renderView(); }
+
+function cartTotals() {
+  const subtotal = round2(cart.reduce((a, item) => a + item.qty * item.price, 0));
+  const atList   = round2(cart.reduce((a, item) => a + item.qty * item.base, 0));
+  const tax      = round2(subtotal * IVA_RATE);
+  return { subtotal, tax, total: round2(subtotal + tax), saving: round2(atList - subtotal) };
+}
+
+/* ============================ 9. AUTENTICACIÓN ============================ */
+function doLogin() {
+  const role = $('#login-role').value;
+  const nameInput = ($('#login-name').value || '').trim();
+  if (role === 'admin') {
+    session = { id:'ADMIN', name: nameInput || ADMIN_USER.name, role:'admin' };
+  } else {
+    const list = activeSellers(); /* solo vendedores activos pueden ingresar */
+    if (!list.length) { toast('No hay vendedores activos. Solicita a Administración registrar uno (Jornada → Gestión).', 'bad'); return; }
+    const u = list.find(x => x.name.toLowerCase() === nameInput.toLowerCase()) || list[0];
+    session = { id: u.id, name: u.name, role:'seller' };
+  }
+  sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
+  ui.view = defaultView(); /* vista inicial según rol: admin→dash, vendedor→catalog */
+  loadCart();
+  initApp();
+}
+
+function logout() {
+  confirmDialog('Cerrar sesión', '¿Salir del sistema? Los datos locales se conservan en este dispositivo.', 'Salir', () => {
+    sessionStorage.removeItem(SESS_KEY);
+    session = null; cart = [];
+    ui.view = 'catalog'; /* reset limpio para el próximo inicio de sesión */
+    renderLogin();
+  }, false);
+}
+
+function renderLogin() {
+  const online = navigator.onLine;
+  const names = activeSellers().map(u => esc(u.name)).join(' · ') || 'Sin vendedores activos registrados';
+  $('#app').innerHTML = `
+  <div class="min-h-screen blueprint flex flex-col items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-lg border border-steel-200 overflow-hidden anim-up">
+      <div class="hazard h-2"></div>
+      <div class="p-6 sm:p-8 space-y-6">
+        <div class="text-center space-y-2">
+          <div class="inline-block p-3 bg-navy-900 rounded-2xl shadow-hardsm">${logoSVG(48)}</div>
+          <h1 class="text-xl font-bold text-navy-900 font-disp tracking-wide">TRUCK FILTERS, C.A.</h1>
+          <p class="text-xs text-steel-500">Sistema Comercial · Filtros industriales para transporte pesado</p>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="lbl">Rol de acceso</label>
+            <select id="login-role" class="input">
+              <option value="seller">Vendedor / Comercial</option>
+              <option value="admin">Administración (Oficina)</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl">Usuario</label>
+            <input type="text" id="login-name" class="input" placeholder="Tu nombre (ej. Carlos)" maxlength="40">
+            <p class="text-[10px] text-steel-400 mt-1.5">Vendedores activos: ${names}</p>
+          </div>
+          <button onclick="doLogin()" class="btn-navy w-full py-3 rounded-xl font-bold text-sm">
+            <i class="fa-solid fa-right-to-bracket"></i> Ingresar al sistema
+          </button>
+        </div>
+        <div class="flex items-center justify-between text-[11px] text-steel-400 border-t border-steel-100 pt-4">
+          <span class="font-mono">${esc(EMPRESA.rif)}</span>
+          <span class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full ${online ? 'bg-emerald-500' : 'bg-red-500'}"></span>
+            ${online ? 'En línea' : 'Sin conexión'}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============================ 10. SHELL / NAVEGACIÓN ============================ */
+/* Convención única: { id, icon, label } — renderShell y setNav leen EXACTAMENTE estas propiedades */
+const NAV = {
+  seller: [
+    { id:'catalog',  icon:'fa-boxes-stacked',     label:'Catálogo' },
+    { id:'tools',    icon:'fa-calculator',        label:'Herram.'  },
+    { id:'cart',     icon:'fa-cart-shopping',     label:'Pedido',  badge: () => cartCount() },
+    { id:'history',  icon:'fa-clock-rotate-left', label:'Historial' }
+  ],
+  admin: [
+    { id:'catalog',   icon:'fa-boxes-stacked',  label:'Catálogo'   },
+    { id:'dash',      icon:'fa-gauge-high',     label:'Panel'      },
+    { id:'orders',    icon:'fa-file-invoice',   label:'Pedidos',   badge: () => db.orders.filter(o => o.status === 'pendiente').length },
+    { id:'crew',      icon:'fa-route',          label:'Jornada'    },
+    { id:'inventory', icon:'fa-warehouse',      label:'Inventario' },
+    { id:'backup',    icon:'fa-database',       label:'Respaldo'   }
+  ]
+};
+const VIEW_TITLES = {
+  catalog:'Catálogo técnico', tools:'Herramientas técnicas', cart:'Pedido en curso', history:'Historial de pedidos',
+  dash:'Panel de control', orders:'Pedidos entrantes', crew:'Control de jornada', inventory:'Inventario', backup:'Respaldo y sincronización'
+};
+
+/* --- Ayudantes de navegación (fuente única de verdad) --- */
+const navFor      = () => (session && NAV[session.role]) ? NAV[session.role] : NAV.seller;
+const navIdsFor   = () => navFor().map(n => n.id);
+const defaultView = () => (session && session.role === 'admin') ? 'dash' : 'catalog';
+
+function renderShell() {
+  const nav = navFor();
+  $('#app').innerHTML = `
+  <div class="min-h-screen flex flex-col bg-steel-100">
+    <header class="bg-navy-900 text-white shadow-md sticky top-0 z-40">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          ${logoSVG(34)}
+          <div class="min-w-0">
+            <h1 class="font-disp font-semibold text-sm tracking-wide truncate">TRUCK FILTERS, C.A.</h1>
+            <span class="text-[10px] text-steel-400 uppercase tracking-widest">${session.role === 'admin' ? 'Oficina · Administración' : 'Comercial en ruta'}</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+          <span id="conn-chip" class="text-[10px] font-semibold"></span>
+          <span id="clock" class="hidden md:block text-xs font-mono text-steel-300"></span>
+          <button onclick="logout()" class="flex items-center gap-2 pl-2 sm:pl-3 border-l border-navy-700 hover:opacity-80 transition-opacity" title="Cerrar sesión">
+            <span class="w-7 h-7 rounded-full bg-acc text-navy-950 text-[10px] font-extrabold flex items-center justify-center">${initialsOf(session.name)}</span>
+            <span class="hidden sm:block text-left leading-tight">
+              <span class="block text-[11px] font-semibold">${esc(session.name)}</span>
+              <span class="block text-[9px] text-steel-400 uppercase tracking-wider">Cerrar sesión</span>
+            </span>
+            <i class="fa-solid fa-right-from-bracket text-steel-400 text-xs sm:hidden"></i>
+          </button>
+        </div>
+      </div>
+      <div class="bg-navy-800 border-t border-navy-700">
+        <div class="max-w-7xl mx-auto px-4 py-1.5 flex items-center justify-between">
+          <span id="view-title" class="text-[10px] font-bold uppercase tracking-[0.22em] text-acc"></span>
+          <span class="text-[9px] font-mono text-steel-400 flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 xlive-dot"></span>SISTEMA ACTIVO
+          </span>
+        </div>
+      </div>
+    </header>
+    <main class="flex-1">
+      <div id="view"></div>
+    </main>
+    <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-sm border-t border-steel-200 shadow-lg flex z-50" aria-label="Navegación principal">
+      ${nav.map(n => `
+        <button onclick="go('${n.id}')" data-nav="${n.id}" class="nav-item text-steel-500" aria-label="${esc(n.label)}">
+          <i class="fa-solid ${n.icon} text-lg"></i>
+          <span class="text-[10px] font-semibold max-w-full truncate">${esc(n.label)}</span>
+          <span data-badge="${n.id}" class="absolute top-1 right-2 min-w-[16px] h-4 px-1 hidden items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold"></span>
+        </button>`).join('')}
+    </nav>
+  </div>`;
+  tickClock(); updateConnChip(); setNav(); setTitle();
+}
+
+function setTitle() {
+  const t = VIEW_TITLES[ui.view] || '';
+  const el = $('#view-title'); if (el) el.textContent = t;
+  document.title = (t ? t + ' — ' : '') + 'Truck Filters, c.a.';
+}
+
+/* go() blindado: valida sesión y destino, siempre repinta vista + nav + título */
+function go(v) {
+  if (!session) { renderLogin(); return; }
+  const ids = navIdsFor();
+  ui.view = ids.includes(v) ? v : defaultView();
+  closeModal(); renderView(); setNav(); setTitle();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function setNav() {
+  document.querySelectorAll('[data-nav]').forEach(b => {
+    const on = b.dataset.nav === ui.view;
+    b.classList.toggle('text-navy-900', on);
+    b.classList.toggle('font-bold', on);
+    b.classList.toggle('text-steel-500', !on);
+    b.classList.toggle('hover:text-navy-900', !on);
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  const role = session ? navFor() : NAV.seller;
+  document.querySelectorAll('[data-badge]').forEach(s => {
+    const def = role.find(n => n.id === s.dataset.badge);
+    const n = def && typeof def.badge === 'function' ? def.badge() : 0;
+    if (n > 0) { s.classList.remove('hidden'); s.classList.add('flex'); s.textContent = n > 99 ? '99+' : String(n); }
+    else { s.classList.add('hidden'); s.classList.remove('flex'); s.textContent = ''; }
+  });
+}
+
+function updateConnChip() {
+  const c = $('#conn-chip'); if (!c) return;
+  const on = navigator.onLine;
+  c.className = `px-2 py-0.5 rounded-full text-[10px] font-semibold border ${on ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40' : 'bg-red-500/15 text-red-300 border-red-500/40'}`;
+  c.innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${on ? 'bg-emerald-400' : 'bg-red-400'} xlive-dot inline-block mr-1"></span>${on ? 'EN LÍNEA' : 'OFFLINE'}`;
+}
+
+function tickClock() { const c = $('#clock'); if (c) c.textContent = new Date().toLocaleTimeString('es-VE'); }
+setInterval(tickClock, 1000);
+
+/* ============================ 11. VISTAS — COMERCIAL ============================ */
+function productCards() {
+  const q = (ui.catQ || '').toLowerCase().trim();
+  const list = (db.products || PRODUCTS)
+    .filter(p => ui.catType === 'todos' || p.type === ui.catType)
+    .filter(p => !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || (p.app || []).some(a => a.toLowerCase().includes(q)));
+  if (!list.length) {
+    return `<div class="card col-span-full text-center py-10 space-y-2">
+      <i class="fa-solid fa-filter-circle-xmark text-3xl text-steel-300"></i>
+      <p class="text-sm text-steel-500">Sin resultados para tu búsqueda.</p>
+    </div>`;
+  }
+  return list.map(p => `
+    <div class="card flex flex-col gap-3">
+      <div class="blueprint rounded-xl border border-steel-200 p-2 flex items-center justify-center">${techSVG(p)}</div>
+      <div>
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[10px] font-mono font-bold text-steel-400">${esc(p.code)}</span>
+          <span class="tag bg-steel-100 text-steel-600"><i class="fa-solid ${(TYPE_META[p.type] || {}).icon || 'fa-filter'}"></i>${(TYPE_META[p.type] || {}).l || esc(p.type)}</span>
+        </div>
+        <h3 class="font-semibold text-sm text-navy-900 mt-1">${esc(p.name)}</h3>
+        <p class="text-[11px] text-steel-500 mt-0.5 truncate">${esc((p.app || []).slice(0, 2).join(' · '))}</p>
+      </div>
+      <div class="flex items-center justify-between pt-3 border-t border-steel-100 mt-auto">
+        <div>
+          <div class="text-base font-bold text-navy-900">${money(p.price)}</div>
+          <div class="text-[10px] font-semibold ${p.stock > 0 ? 'text-emerald-600' : 'text-red-500'}">${p.stock > 0 ? 'Stock: ' + p.stock + ' u · vol. mín ' + p.minVol : 'Agotado'}</div>
+        </div>
+        <button onclick="addToCart('${p.code}',1)" class="btn-amber px-3 py-2 text-xs rounded-xl" ${p.stock <= 0 ? 'disabled' : ''}>
+          <i class="fa-solid fa-cart-plus"></i> Agregar
+        </button>
+      </div>
+    </div>`).join('');
+}
+function renderProductList() { const el = document.getElementById('product-list'); if (el) el.innerHTML = productCards(); }
+
+function viewCatalog() {
+  const types = ['todos', ...Object.keys(TYPE_META)];
+  return `
+  <div class="p-4 pb-24 max-w-7xl mx-auto space-y-6 anim-up">
+    <div>
+      <div class="kicker mb-1">Truck Filters · Referencias HD</div>
+      <h2 class="text-xl font-bold text-navy-900 font-disp">Catálogo de productos</h2>
+    </div>
+    <div class="relative">
+      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-steel-400 text-sm"></i>
+      <input value="${esc(ui.catQ)}" oninput="ui.catQ=this.value;renderProductList()" class="input pl-9" placeholder="Buscar por nombre, código o aplicación...">
+    </div>
+    <div class="flex gap-2 overflow-x-auto pb-1">
+      ${types.map(t => `<button onclick="ui.catType='${t}';renderView()" class="chip border ${ui.catType === t ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-navy-700 border-steel-200 hover:border-navy-400'}">${t === 'todos' ? 'Todos' : TYPE_META[t].l}</button>`).join('')}
+    </div>
+    <div id="product-list" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">${productCards()}</div>
+
+    <div class="hazard h-1.5 rounded-full"></div>
+
+    ${viewFiltersCatalog()}
+  </div>`;
+}
+
+/* ============================ CATÁLOGO VISUAL CAR-SEV (con fotos) ============================ */
+function viewFiltersCatalog() {
+  return `
+  <section id="sev-section" class="space-y-4">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <div class="kicker mb-1">Línea CAR-SEV · Selección visual</div>
+        <h3 class="text-lg font-bold text-navy-900 font-disp">Catálogo de filtros con foto</h3>
+        <p class="text-xs text-steel-500 mt-0.5">Toca una tarjeta para ampliar la fotografía y ver la ficha completa.</p>
+      </div>
+      <span id="filterCount" class="chip bg-navy-50 text-navy-700 border border-navy-100"></span>
+    </div>
+
+    <div class="relative">
+      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-steel-400 text-sm"></i>
+      <input value="${esc(ui.filterQ)}" oninput="ui.filterQ=this.value;renderFilterCatalogGrid()" class="input pl-9 pr-10" placeholder="Búsqueda rápida: código, aplicación o dimensión…" maxlength="60">
+      <button id="filterClear" onclick="ui.filterQ='';renderFilterCatalogGrid()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg text-steel-400 hover:bg-steel-100 hover:text-navy-900 transition-colors" aria-label="Limpiar búsqueda">
+        <i class="fa-solid fa-xmark text-xs"></i>
+      </button>
+    </div>
+
+    <div id="filterCatalogGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+
+    <details id="filterFormDetails" class="card group">
+      <summary class="flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <span class="flex items-center gap-2">
+          <i class="fa-solid fa-screwdriver-wrench text-acc-dark"></i>
+          <span class="sec-title">Gestión de filtros CAR-SEV</span>
+        </span>
+        <i class="fa-solid fa-chevron-down text-steel-400 transition-transform group-open:rotate-180"></i>
+      </summary>
+      <p class="text-xs text-steel-500 mt-3 mb-4">Registra referencias con su fotografía — sube un archivo o indica la ruta <span class="font-mono">assets/img/filters/</span> — junto a su aplicación y dimensiones clave.</p>
+      <form id="filterAdminForm" onsubmit="handleSaveFilter(event)" class="space-y-4">
+        <input type="hidden" id="editIndex" value="">
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="lbl" for="inputCodigo">Código del filtro *</label>
+            <input type="text" id="inputCodigo" required class="input font-mono" placeholder="Ej: TF-2810" maxlength="20">
+          </div>
+          <div>
+            <label class="lbl" for="inputAplicacion">Aplicación comercial *</label>
+            <input type="text" id="inputAplicacion" required class="input" placeholder="Ej: Mack / Iveco" maxlength="80">
+          </div>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="lbl" for="inputDimensiones">Dimensiones clave *</label>
+            <input type="text" id="inputDimensiones" required class="input" placeholder="Ej: Alt: 155mm | Diám: 95mm" maxlength="80">
+          </div>
+          <div>
+            <label class="lbl" for="inputImagen">Ruta de imagen (opcional)</label>
+            <input type="text" id="inputImagen" class="input font-mono" placeholder="tf-2810.jpg" maxlength="120">
+          </div>
+        </div>
+        <div>
+          <label class="lbl">Fotografía del filtro (opcional)</label>
+          <div class="flex items-center gap-3">
+            <img id="imgPreview" src="${FILTER_IMG_FALLBACK}" alt="Vista previa de la fotografía" class="w-20 h-20 rounded-xl object-cover border border-steel-200 bg-steel-50 shrink-0">
+            <div class="flex-1 space-y-2">
+              <label class="btn-line px-4 py-2 text-xs rounded-xl cursor-pointer">
+                <i class="fa-solid fa-camera"></i> Subir foto desde el equipo
+                <input type="file" accept="image/*" class="hidden" onchange="handleFilterPhoto(this)">
+              </label>
+              <p class="text-[10px] text-steel-400">JPG o PNG. Se optimiza automáticamente (máx. 800px). Si no subes foto, se usa la ruta indicada arriba.</p>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 pt-1">
+          <button type="button" onclick="resetAdminForm()" class="btn-line px-4 py-2 text-xs rounded-xl">Cancelar</button>
+          <button type="submit" id="filterSaveBtn" class="btn-navy px-5 py-2 text-xs rounded-xl"><i class="fa-solid fa-floppy-disk"></i> Guardar filtro</button>
+        </div>
+      </form>
+    </details>
+  </section>`;
+}
+
+/* ============================ 12. HERRAMIENTAS ============================ */
+function toolPlan() {
+  const eng  = ENGINES.find(e => e.id === ui.planEngine) || ENGINES[0];
+  const cond = CONDS[ui.planCond];
+  const slots = [
+    { label:'Aceite',       iv: eng.iv.oil,  code: eng.oil  },
+    { label:'Combustible',  iv: eng.iv.fuel, code: eng.fuel },
+    { label:'Aire primario',iv: eng.iv.airP, code: eng.airP }
+  ].filter(s => s.code && s.iv);
+  return `
+  <div class="card space-y-4">
+    <div class="grid sm:grid-cols-3 gap-3">
+      <div>
+        <label class="lbl">Motor</label>
+        <select class="input" onchange="ui.planEngine=this.value;renderView()">
+          ${ENGINES.map(e => `<option value="${e.id}" ${e.id === ui.planEngine ? 'selected' : ''}>${esc(e.label)}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Condición de vía</label>
+        <select class="input" onchange="ui.planCond=this.value;renderView()">
+          ${Object.entries(CONDS).map(([k, c]) => `<option value="${k}" ${k === ui.planCond ? 'selected' : ''}>${c.l}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Kilometraje actual</label>
+        <input type="number" min="0" step="500" class="input" value="${ui.planKm}" onchange="ui.planKm=Math.max(0,parseInt(this.value)||0);renderView()">
+      </div>
+    </div>
+    <div class="space-y-3">
+      ${slots.map(s => {
+        const p = prod(s.code); if (!p) return '';
+        const eff = Math.max(1, Math.round(s.iv * cond.f));
+        const pct = Math.min(100, Math.round(ui.planKm / eff * 100));
+        const due = ui.planKm >= eff;
+        const rem = eff - ui.planKm;
+        return `
+        <div class="border border-steel-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div class="blueprint border border-steel-200 rounded-lg p-2 shrink-0 self-start sm:self-center">${techSVG(p)}</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="tag bg-navy-50 text-navy-700">${s.label}</span>
+              <span class="text-[10px] font-mono text-steel-400">${p.code}</span>
+            </div>
+            <div class="font-semibold text-sm text-navy-900 mt-1">${esc(p.name)}</div>
+            <div class="text-[11px] text-steel-500 mt-1">Base ${s.iv.toLocaleString('es-VE')} km → ajustado <b>${eff.toLocaleString('es-VE')} km</b> por condición de vía</div>
+            <div class="h-2 bg-steel-100 rounded-full mt-2 overflow-hidden"><div class="h-full ${due ? 'bg-red-500' : pct > 75 ? 'bg-acc' : 'bg-emerald-500'}" style="width:${pct}%"></div></div>
+            <div class="text-xs font-semibold mt-1 ${due ? 'text-red-600' : pct > 75 ? 'text-acc-dark' : 'text-emerald-600'}">
+              ${due ? '<i class="fa-solid fa-triangle-exclamation"></i> Cambio requerido ahora' : '<i class="fa-solid fa-circle-check"></i> OK — próximo cambio en ' + rem.toLocaleString('es-VE') + ' km'}
+            </div>
+          </div>
+          <button onclick="addToCart('${p.code}',${p.minVol || 1})" class="btn-amber px-3 py-2 text-xs rounded-xl shrink-0"><i class="fa-solid fa-cart-plus"></i> +${p.minVol || 1} u</button>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function refRows() {
+  const q = (ui.toolQ || '').toLowerCase().trim();
+  if (!q) {
+    return `<div class="bg-white border border-steel-200 rounded-xl p-4 text-xs text-steel-500 flex items-start gap-2">
+      <i class="fa-solid fa-circle-info text-navy-700 mt-0.5"></i>
+      <span>Escribe una referencia del mercado (Fleetguard, Wix, Napa, Donaldson, Baldwin…) para hallar el equivalente Truck Filters.</span>
+    </div>`;
+  }
+  const rows = [];
+  (db.products || PRODUCTS).forEach(p => (p.cross || []).forEach(([brand, ref]) => {
+    if (ref.toLowerCase().includes(q) || brand.toLowerCase().includes(q)) rows.push({ brand, ref, p });
+  }));
+  if (!rows.length) {
+    return `<div class="bg-white border border-steel-200 rounded-xl p-4 text-sm text-steel-500">Sin equivalencias para "<b>${esc(ui.toolQ)}</b>".</div>`;
+  }
+  return rows.map(r => `
+    <div class="bg-white border border-steel-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <div class="text-sm font-bold text-navy-900">${esc(r.brand)} · ${esc(r.ref)}</div>
+        <div class="text-xs text-steel-500 truncate">Equivalente: <b class="text-navy-800">${r.p.code}</b> — ${esc(r.p.name)}</div>
+      </div>
+      <button onclick="addToCart('${r.p.code}',1)" class="btn-navy px-3 py-1.5 text-xs rounded-lg shrink-0"><i class="fa-solid fa-cart-plus"></i></button>
+    </div>`).join('');
+}
+function renderRefResults() { const el = document.getElementById('ref-results'); if (el) el.innerHTML = refRows(); }
+
+function viewTools() {
+  return `
+  <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
+    <div>
+      <div class="kicker mb-1">Asistencia técnica en ruta</div>
+      <h2 class="text-xl font-bold text-navy-900 font-disp">Herramientas</h2>
+    </div>
+    <div class="flex gap-2">
+      ${[['plan','Plan de mantenimiento','fa-calendar-check'],['refs','Referencias cruzadas','fa-arrows-rotate']].map(([k, l, ic]) => `
+        <button onclick="ui.tool='${k}';renderView()" class="chip border ${ui.tool === k ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-navy-700 border-steel-200 hover:border-navy-400'}"><i class="fa-solid ${ic}"></i> ${l}</button>`).join('')}
+    </div>
+    ${ui.tool === 'refs' ? `
+      <div class="space-y-4">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-steel-400 text-sm"></i>
+          <input value="${esc(ui.toolQ)}" oninput="ui.toolQ=this.value;renderRefResults()" class="input pl-9" placeholder="Ej. LF16035, 57374, Fleetguard...">
+        </div>
+        <div id="ref-results" class="space-y-2">${refRows()}</div>
+      </div>` : toolPlan()}
+  </div>`;
+}
+
+/* ============================ 13. PEDIDO / HISTORIAL ============================ */
+function viewCart() {
+  if (!cart.length) {
+    return `
+    <div class="p-4 pb-24 max-w-3xl mx-auto anim-up">
+      <div class="card text-center py-12 space-y-4">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-steel-100 flex items-center justify-center"><i class="fa-solid fa-cart-shopping text-2xl text-steel-400"></i></div>
+        <div>
+          <h2 class="font-bold text-navy-900">Tu pedido está vacío</h2>
+          <p class="text-xs text-steel-500 mt-1">Explora el catálogo y agrega filtros para comenzar.</p>
+        </div>
+        <button onclick="go('catalog')" class="btn-navy px-5 py-2.5 text-xs rounded-xl mx-auto"><i class="fa-solid fa-boxes-stacked"></i> Ir al catálogo</button>
+      </div>
+    </div>`;
+  }
+  const t = cartTotals();
+  const discTag = q => q >= 50 ? '−8%' : q >= 25 ? '−5%' : q >= 10 ? '−3%' : '';
+  return `
+  <div class="p-4 pb-24 max-w-3xl mx-auto space-y-5 anim-up">
+    <div>
+      <div class="kicker mb-1">Orden en preparación</div>
+      <h2 class="text-xl font-bold text-navy-900 font-disp">Pedido en curso</h2>
+    </div>
+    <div class="space-y-3">
+      ${cart.map((l, i) => `
+        <div class="card flex flex-wrap items-center gap-3">
+          <div class="flex-1 min-w-[140px]">
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-mono font-bold text-steel-400">${esc(l.code)}</span>
+              ${discTag(l.qty) ? `<span class="tag bg-acc-soft text-acc-dark"><i class="fa-solid fa-tags"></i>${discTag(l.qty)}</span>` : ''}
+            </div>
+            <div class="font-semibold text-sm text-navy-900 truncate">${esc(l.name || l.code)}</div>
+            <div class="text-[11px] text-steel-500">${money(l.price)} c/u · lista ${money(l.base)}</div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="changeQty(${i},-1)" class="btn-line w-8 h-8 rounded-lg" aria-label="Restar"><i class="fa-solid fa-minus text-[10px]"></i></button>
+            <span class="w-8 text-center font-bold text-sm">${l.qty}</span>
+            <button onclick="changeQty(${i},1)" class="btn-line w-8 h-8 rounded-lg" aria-label="Sumar"><i class="fa-solid fa-plus text-[10px]"></i></button>
+            <button onclick="removeLine(${i})" class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 transition-colors" aria-label="Eliminar"><i class="fa-solid fa-trash text-[10px]"></i></button>
+          </div>
+          <div class="w-20 text-right font-bold text-sm">${money(l.qty * l.price)}</div>
+        </div>`).join('')}
+    </div>
+    <div class="card space-y-3">
+      <h3 class="sec-title"><i class="fa-solid fa-building-user text-acc-dark mr-1"></i> Datos del cliente</h3>
+      <div>
+        <label class="lbl">Cliente / Razón social *</label>
+        <input id="c-name" class="input" placeholder="Ej. Transporte Bolívar, C.A." maxlength="80">
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div><label class="lbl">RIF</label><input id="c-rif" class="input font-mono" placeholder="J-12345678-9" maxlength="14"></div>
+        <div><label class="lbl">Contacto</label><input id="c-contact" class="input" placeholder="Nombre del contacto" maxlength="60"></div>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div><label class="lbl">Teléfono</label><input id="c-phone" class="input" placeholder="0414-0000000" maxlength="20"></div>
+        <div><label class="lbl">Dirección de despacho</label><input id="c-address" class="input" placeholder="Dirección" maxlength="120"></div>
+      </div>
+    </div>
+    <div class="card space-y-2">
+      <div class="flex justify-between text-sm"><span class="text-steel-500">Subtotal</span><span class="font-semibold">${money(t.subtotal)}</span></div>
+      ${t.saving > 0 ? `<div class="flex justify-between text-sm text-emerald-600"><span>Ahorro por volumen</span><span class="font-semibold">−${money(t.saving)}</span></div>` : ''}
+      <div class="flex justify-between text-sm"><span class="text-steel-500">IVA (16%)</span><span class="font-semibold">${money(t.tax)}</span></div>
+      <div class="flex justify-between items-center pt-2 border-t border-steel-200">
+        <span class="font-bold text-navy-900">Total</span>
+        <span class="font-bold text-lg font-disp text-navy-900">${money(t.total)}</span>
+      </div>
+    </div>
+    <button onclick="submitOrder()" class="btn-ok w-full py-3.5 rounded-xl font-bold text-sm"><i class="fa-solid fa-paper-plane"></i> Enviar pedido a oficina</button>
+  </div>`;
+}
+
+function viewHistory() {
+  const mine  = db.orders.filter(o => o.sellerId === session.id);
+  const total = mine.reduce((a, o) => a + o.total, 0);
+  const pend  = mine.filter(o => o.status === 'pendiente').length;
+  const statBox = (l, v) => `<div class="bg-white border border-steel-200 rounded-xl shadow-sm p-3 text-center">
+    <div class="kicker">${l}</div><div class="text-lg font-bold font-disp text-navy-900 mt-0.5">${v}</div>
+  </div>`;
+  return `
+  <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
+    <div>
+      <div class="kicker mb-1">${esc(session.name)} · ${esc((sellerById(session.id) || {}).zone || 'Zona comercial')}</div>
+      <h2 class="text-xl font-bold text-navy-900 font-disp">Historial de pedidos</h2>
+    </div>
+    <div class="grid grid-cols-3 gap-3">
+      ${statBox('Enviados', mine.length)}
+      ${statBox('Pendientes', pend)}
+      ${statBox('Facturado', money(total))}
+    </div>
+    <div class="space-y-3">
+      ${mine.length ? mine.map(o => `
+        <div class="card flex flex-wrap items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-disp font-semibold text-navy-900">${esc(o.number)}</span>
+              ${stChip(o.status)}
+            </div>
+            <div class="text-sm font-semibold text-navy-900 mt-1 truncate">${esc((o.client || {}).name || 'Cliente')}</div>
+            <div class="text-[11px] text-steel-500">${fDT(o.ts)} · ${o.items.length} ítem(s) · ${o.items.reduce((a, i) => a + i.qty, 0)} u</div>
+          </div>
+          <div class="text-lg font-bold font-disp text-navy-900">${money(o.total)}</div>
+        </div>`).join('')
+      : `<div class="card text-sm text-steel-500 text-center py-8">Aún no has enviado pedidos. Ve al <b>Catálogo</b> y arma el primero.</div>`}
+    </div>
+  </div>`;
+}
+
+/* ============================ 14. VISTAS — OFICINA (ADMIN) ============================ */
+const kpiCard = (ic, label, value, cls) => `
+  <div class="card flex items-center gap-3">
+    <div class="w-11 h-11 rounded-xl ${cls} flex items-center justify-center shrink-0"><i class="fa-solid ${ic}"></i></div>
+    <div class="min-w-0">
+      <div class="kicker truncate">${label}</div>
+      <div class="text-lg font-bold font-disp text-navy-900 mt-0.5 truncate">${value}</div>
+    </div>
+  </div>`;
+
+function viewDash() {
+  const pend = db.orders.filter(o => o.status === 'pendiente');
+  const today = db.orders.filter(o => o.ts >= t0());
+  const salesToday = today.reduce((a, o) => a + o.total, 0);
+  const lowStock = (db.products || PRODUCTS).filter(p => p.stock < 20);
+  return `
+  <div class="p-4 pb-24 max-w-7xl mx-auto space-y-5 anim-up">
+    <div class="flex items-end justify-between flex-wrap gap-3">
+      <div>
+        <div class="kicker mb-1">Oficina · ${fD(Date.now())}</div>
+        <h2 class="text-xl font-bold text-navy-900 font-disp">Panel de control</h2>
+      </div>
+      <button onclick="go('orders')" class="btn-amber px-4 py-2 text-xs rounded-xl">
+        <i class="fa-solid fa-inbox"></i> Gestionar pedidos${pend.length ? ' (' + pend.length + ')' : ''}
+      </button>
+    </div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      ${kpiCard('fa-hourglass-half', 'Pedidos pendientes', pend.length, 'bg-acc text-navy-950')}
+      ${kpiCard('fa-circle-check',   'Aprobados', db.orders.filter(o => o.status === 'aprobado').length, 'bg-blue-600 text-white')}
+      ${kpiCard('fa-truck-fast',     'Despachados', db.orders.filter(o => o.status === 'despachado').length, 'bg-emerald-600 text-white')}
+      ${kpiCard('fa-sack-dollar',    'Ventas de hoy', money(salesToday), 'bg-navy-900 text-white')}
+    </div>
+    <div class="grid lg:grid-cols-2 gap-4">
+      <div class="card">
+        <h3 class="sec-title mb-3"><i class="fa-solid fa-chart-line text-acc-dark mr-1"></i> Actividad reciente</h3>
+        <div class="space-y-1">
+          ${(db.activity || []).slice(0, 6).map(a => `
+            <div class="flex items-center gap-3 py-2 border-b border-steel-100 last:border-0">
+              <div class="w-8 h-8 rounded-lg bg-steel-100 text-navy-700 flex items-center justify-center shrink-0"><i class="fa-solid ${a.ic || 'fa-circle'} text-xs"></i></div>
+              <span class="flex-1 text-xs text-navy-900">${esc(a.t)}</span>
+              <span class="text-[10px] font-mono text-steel-400 shrink-0">${fT(a.ts)}</span>
+            </div>`).join('') || '<p class="text-xs text-steel-500">Sin actividad registrada.</p>'}
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="sec-title mb-3"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i> Stock bajo (&lt; 20 u)</h3>
+        <div class="space-y-1">
+          ${lowStock.length ? lowStock.map(p => `
+            <div class="flex items-center gap-3 py-2 border-b border-steel-100 last:border-0">
+              <span class="text-[10px] font-mono font-bold text-steel-400 w-20 shrink-0">${esc(p.code)}</span>
+              <span class="flex-1 text-xs text-navy-900 truncate">${esc(p.name)}</span>
+              <span class="tag border ${p.stock <= 0 ? 'bg-red-50 text-red-700 border-red-300' : 'bg-amber-50 text-amber-800 border-amber-300'}">${p.stock} u</span>
+            </div>`).join('')
+          : `<div class="flex items-center gap-2 text-xs text-emerald-600 py-2"><i class="fa-solid fa-circle-check"></i> Todo el inventario en niveles óptimos.</div>`}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function orderCards() {
+  const q = (ui.admin.q || '').toLowerCase().trim();
+  const list = db.orders
+    .filter(o => ui.admin.st === 'todos' || o.status === ui.admin.st)
+    .filter(o => !q || o.number.toLowerCase().includes(q) || ((o.client || {}).name || '').toLowerCase().includes(q) || (o.sellerName || '').toLowerCase().includes(q));
+  if (!list.length) {
+    return `<div class="card text-center py-10 space-y-2">
+      <i class="fa-solid fa-inbox text-3xl text-steel-300"></i>
+      <p class="text-sm text-steel-500">No hay pedidos con estos criterios.</p>
+    </div>`;
+  }
+  return list.map(o => `
+    <div class="card">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-disp font-semibold text-navy-900">${esc(o.number)}</span>
+            ${stChip(o.status)}
+          </div>
+          <div class="text-sm font-semibold text-navy-900 mt-1">${esc((o.client || {}).name || 'Cliente')}</div>
+          <div class="text-[11px] text-steel-500">${esc((o.client || {}).rif || '—')} · ${fDT(o.ts)} · Vendedor: ${esc(o.sellerName)}</div>
+        </div>
+        <div class="text-right shrink-0">
+          <div class="text-lg font-bold font-disp text-navy-900">${money(o.total)}</div>
+          <div class="text-[11px] text-steel-500">${o.items.length} ítem(s) · ${o.items.reduce((a, i) => a + i.qty, 0)} u</div>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-steel-100">
+        <button onclick="openOrderDetail('${o.id}')" class="btn-line px-3 py-1.5 text-xs rounded-lg"><i class="fa-solid fa-eye"></i> Detalle</button>
+        ${o.status === 'pendiente' ? `
+          <button onclick="setOrderStatus('${o.id}','aprobado')" class="btn-ok px-3 py-1.5 text-xs rounded-lg"><i class="fa-solid fa-check"></i> Aprobar</button>
+          <button onclick="setOrderStatus('${o.id}','rechazado')" class="btn-bad px-3 py-1.5 text-xs rounded-lg"><i class="fa-solid fa-ban"></i> Rechazar</button>` : ''}
+        ${o.status === 'aprobado' ? `
+          <button onclick="setOrderStatus('${o.id}','despachado')" class="btn-amber px-3 py-1.5 text-xs rounded-lg"><i class="fa-solid fa-truck-fast"></i> Despachar</button>` : ''}
+      </div>
+    </div>`).join('');
+}
+function renderOrderList() { const el = document.getElementById('orders-list'); if (el) el.innerHTML = orderCards(); }
+
+function viewOrders() {
+  const stCounts = { todos: db.orders.length };
+  Object.keys(ST).forEach(k => stCounts[k] = db.orders.filter(o => o.status === k).length);
+  const chips = [['todos', 'Todos'], ...Object.entries(ST).map(([k, v]) => [k, v.l])];
+  return `
+  <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
+    <div>
+      <div class="kicker mb-1">Oficina · Flujo de aprobación</div>
+      <h2 class="text-xl font-bold text-navy-900 font-disp">Pedidos entrantes</h2>
+    </div>
+    <div class="flex gap-2 overflow-x-auto pb-1">
+      ${chips.map(([k, l]) => `
+        <button onclick="ui.admin.st='${k}';renderView()" class="chip border ${ui.admin.st === k ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-navy-700 border-steel-200 hover:border-navy-400'}">${l}<span class="font-mono opacity-60 ml-1">${stCounts[k]}</span></button>`).join('')}
+    </div>
+    <div class="relative">
+      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-steel-400 text-sm"></i>
+      <input value="${esc(ui.admin.q)}" oninput="ui.admin.q=this.value;renderOrderList()" class="input pl-9" placeholder="Buscar número, cliente o vendedor...">
+    </div>
+    <div id="orders-list" class="space-y-3">${orderCards()}</div>
+  </div>`;
+}
+
+/* ============================ JORNADA + GESTIÓN DINÁMICA DE VENDEDORES ============================ */
+function viewCrew() {
+  return `
+  <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
+    <div>
+      <div class="kicker mb-1">Fuerza comercial · ${activeSellers().length} activos</div>
+      <h2 class="text-xl font-bold text-navy-900 font-disp">Control de jornada</h2>
+    </div>
+    <div id="crew-body">${crewBodyHTML()}</div>
+  </div>`;
+}
+
+function crewBodyHTML() {
+  const sellers = getSellers();
+  const active  = sellers.filter(s => s.active !== false);
+  const today   = db.orders.filter(o => o.ts >= t0());
+  return `
+  <details id="sellerMgmt" class="card group mb-5">
+    <summary class="flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+      <span class="flex items-center gap-2">
+        <i class="fa-solid fa-users-gear text-acc-dark"></i>
+        <span class="sec-title">Gestión de vendedores</span>
+        <span class="chip bg-navy-50 text-navy-700 border border-navy-100 ml-1">${active.length} activo(s) · ${sellers.length - active.length} de baja</span>
+      </span>
+      <i class="fa-solid fa-chevron-down text-steel-400 transition-transform group-open:rotate-180"></i>
+    </summary>
+    <p class="text-xs text-steel-500 mt-3 mb-4">Agrega, edita o da de baja al equipo comercial. Los cambios se guardan al instante y aplican al login, pedidos y jornadas.</p>
+
+    <form id="sellerForm" onsubmit="saveSellerForm(event)" class="space-y-4 pb-5 mb-5 border-b border-steel-100">
+      <input type="hidden" id="s-editId" value="">
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="lbl" for="s-name">Nombre completo *</label>
+          <input type="text" id="s-name" required class="input" placeholder="Ej: Pedro Silva" maxlength="60">
+        </div>
+        <div>
+          <label class="lbl" for="s-id">Cédula / ID *</label>
+          <input type="text" id="s-id" required class="input font-mono" placeholder="${nextSellerId()}" maxlength="20">
+        </div>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="lbl" for="s-zone">Zona de ruta *</label>
+          <input type="text" id="s-zone" required class="input" placeholder="Ej: Valencia Sur" maxlength="60">
+        </div>
+        <div>
+          <label class="lbl" for="s-pin">PIN de acceso (4 dígitos) *</label>
+          <input type="text" id="s-pin" required class="input font-mono" inputmode="numeric" pattern="\\d{4}" placeholder="0000" maxlength="4">
+        </div>
+      </div>
+      <div class="flex justify-end gap-3">
+        <button type="button" onclick="resetSellerForm()" class="btn-line px-4 py-2 text-xs rounded-xl">Cancelar</button>
+        <button type="submit" id="sellerSaveBtn" class="btn-navy px-5 py-2 text-xs rounded-xl"><i class="fa-solid fa-user-plus"></i> Registrar vendedor</button>
+      </div>
+    </form>
+
+    <div class="space-y-0.5">
+      ${sellers.length ? sellers.map((s, i) => sellerRowHTML(s, i)).join('')
+      : `<div class="text-sm text-steel-500 text-center py-6">No hay vendedores registrados. Agrega el primero con el formulario superior.</div>`}
+    </div>
+  </details>
+
+  <div class="grid md:grid-cols-2 gap-4">
+    ${active.length ? active.map(u => crewCardHTML(u, today)).join('')
+    : `<div class="card md:col-span-2 text-sm text-steel-500 text-center py-8">No hay vendedores activos. Reactiva o registra uno desde la gestión superior.</div>`}
+  </div>`;
+}
+
+function sellerRowHTML(s, i) {
+  const on = s.active !== false;
+  const canDelete = !db.orders.some(o => o.sellerId === s.id);
+  return `
+  <div class="flex items-center gap-3 py-2.5 border-b border-steel-100 last:border-0">
+    <div class="w-9 h-9 rounded-full ${on ? 'bg-navy-900 text-acc' : 'bg-steel-200 text-steel-500'} font-disp font-bold text-xs flex items-center justify-center shrink-0">${initialsOf(s.name)}</div>
+    <div class="flex-1 min-w-0">
+      <div class="text-sm font-semibold text-navy-900 truncate flex items-center gap-2">
+        ${esc(s.name)}
+        <span class="tag border ${on ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-steel-100 text-steel-500 border-steel-200'}">${on ? 'Activo' : 'De baja'}</span>
+      </div>
+      <div class="text-[11px] text-steel-500 truncate"><span class="font-mono">${esc(s.id)}</span> · ${esc(s.zone)} · PIN <span class="font-mono">${esc(s.pin)}</span></div>
+    </div>
+    <div class="flex items-center gap-1 shrink-0">
+      <button onclick="editSeller(${i})" class="btn-line w-8 h-8 rounded-lg" title="Editar" aria-label="Editar ${esc(s.name)}"><i class="fa-solid fa-pen text-[10px]"></i></button>
+      <button onclick="toggleSellerActive(${i})" class="btn-line w-8 h-8 rounded-lg" title="${on ? 'Dar de baja' : 'Reactivar'}" aria-label="${on ? 'Dar de baja' : 'Reactivar'} ${esc(s.name)}"><i class="fa-solid ${on ? 'fa-user-slash' : 'fa-user-check'} text-[10px]"></i></button>
+      ${canDelete ? `<button onclick="deleteSeller(${i})" class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Eliminar definitivamente" aria-label="Eliminar ${esc(s.name)}"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}
+    </div>
+  </div>`;
+}
+
+function crewCardHTML(u, today) {
+  const j = db.jornada[u.id];
+  const on = j && !j.end;
+  const mine = today.filter(o => o.sellerId === u.id);
+  return `
+  <div class="card">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-full bg-navy-900 text-acc font-disp font-bold flex items-center justify-center shrink-0">${initialsOf(u.name)}</div>
+      <div class="flex-1 min-w-0">
+        <div class="font-bold text-sm text-navy-900 truncate">${esc(u.name)}</div>
+        <div class="text-[11px] text-steel-500">${esc(u.id)} · ${esc(u.zone)}</div>
+      </div>
+      <span class="tag border ${on ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-steel-100 text-steel-500 border-steel-200'}">
+        <span class="w-2 h-2 rounded-full ${on ? 'bg-emerald-500 xlive-dot' : 'bg-steel-400'}"></span>${on ? 'En ruta' : 'Fuera de ruta'}
+      </span>
+    </div>
+    <div class="grid grid-cols-2 gap-3 mt-4">
+      <div class="bg-steel-50 border border-steel-200 rounded-xl py-2 text-center">
+        <div class="kicker">Inicio</div>
+        <div class="text-sm font-bold font-mono text-navy-900">${j ? fT(j.start) : '—'}</div>
+      </div>
+      <div class="bg-steel-50 border border-steel-200 rounded-xl py-2 text-center">
+        <div class="kicker">Fin</div>
+        <div class="text-sm font-bold font-mono text-navy-900">${j && j.end ? fT(j.end) : '—'}</div>
+      </div>
+    </div>
+    <div class="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-steel-100">
+      <span class="text-xs text-steel-500">Pedidos hoy: <b class="text-navy-900">${mine.length}</b> · ${money(mine.reduce((a, o) => a + o.total, 0))}</span>
+      <button onclick="toggleJornada('${esc(u.id)}')" class="${on ? 'btn-line' : 'btn-navy'} px-3 py-1.5 text-xs rounded-lg shrink-0">
+        ${on ? '<i class="fa-solid fa-flag-checkered"></i> Finalizar' : '<i class="fa-solid fa-play"></i> Iniciar'}
+      </button>
+    </div>
+  </div>`;
+}
+
+function renderCrew() { const el = document.getElementById('crew-body'); if (el) el.innerHTML = crewBodyHTML(); }
+
+/* ============================ 15. ACCIONES DE NEGOCIO ============================ */
+function submitOrder() {
+  if (!cart.length) { toast('El pedido está vacío.', 'warn'); return; }
+  const name = ($('#c-name').value || '').trim();
+  if (!name) { toast('Indica el nombre del cliente.', 'warn'); return; }
+  const rif = ($('#c-rif').value || '').trim().toUpperCase();
+  if (rif && !RIF_OK(rif)) { toast('RIF inválido. Formato esperado: J-12345678-9', 'bad'); return; }
+  const t = cartTotals();
+  const number = 'TF26-' + String(db.counter).padStart(4, '0');
+  db.counter++;
+  db.orders.unshift({
+    id: uid(), number, sellerId: session.id, sellerName: session.name, ts: Date.now(),
+    client: {
+      name, rif,
+      contact: ($('#c-contact').value || '').trim(),
+      phone: ($('#c-phone').value || '').trim(),
+      address: ($('#c-address').value || '').trim()
+    },
+    items: cart.map(l => ({ ...l })),
+    subtotal: t.subtotal, tax: t.tax, total: t.total, status: 'pendiente',
+    history: [{ status: 'pendiente', ts: Date.now(), by: session.name }],
+    rejectReason: ''
+  });
+  logActivity('fa-file-invoice', `Pedido ${number} generado por ${session.name}`);
+  cart = []; saveCart(); saveDB();
+  toast(`Pedido <b>${number}</b> enviado a oficina.`, 'ok');
+  go('history');
+}
+
+function openOrderDetail(id) {
+  const o = db.orders.find(x => x.id === id); if (!o) return;
+  openModal(`
+    <div class="p-6 space-y-5 overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="kicker mb-1">Comprobante interno</div>
+          <h3 class="text-xl font-bold font-disp text-navy-900">${esc(o.number)}</h3>
+          <p class="text-xs text-steel-500 mt-0.5">${fDT(o.ts)} · Vendedor: ${esc(o.sellerName)}</p>
+        </div>
+        ${stChip(o.status)}
+      </div>
+      <div class="bg-steel-50 border border-steel-200 rounded-xl p-4 grid sm:grid-cols-2 gap-3 text-xs">
+        <div><div class="kicker">Cliente</div><div class="font-semibold text-navy-900">${esc((o.client || {}).name || '—')}</div></div>
+        <div><div class="kicker">RIF</div><div class="font-semibold text-navy-900 font-mono">${esc((o.client || {}).rif || '—')}</div></div>
+        <div><div class="kicker">Contacto</div><div class="font-semibold text-navy-900">${esc((o.client || {}).contact || '—')}${(o.client || {}).phone ? ' · ' + esc(o.client.phone) : ''}</div></div>
+        <div><div class="kicker">Dirección</div><div class="font-semibold text-navy-900">${esc((o.client || {}).address || '—')}</div></div>
+      </div>
+      <div class="border border-steel-200 rounded-xl overflow-x-auto">
+        <table class="w-full min-w-[420px]">
+          <thead><tr><th class="th">Ítem</th><th class="th text-center">Cant.</th><th class="th text-right">P.U.</th><th class="th text-right">Importe</th></tr></thead>
+          <tbody>
+            ${o.items.map(i => `
+              <tr>
+                <td class="td"><div class="font-semibold">${esc(i.name || i.code)}</div><div class="text-[10px] font-mono text-steel-400">${esc(i.code)}</div></td>
+                <td class="td text-center">${i.qty}</td>
+                <td class="td text-right">${money(i.price)}</td>
+                <td class="td text-right font-semibold">${money(i.qty * i.price)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="space-y-1 text-sm">
+        <div class="flex justify-between"><span class="text-steel-500">Subtotal</span><span>${money(o.subtotal)}</span></div>
+        <div class="flex justify-between"><span class="text-steel-500">IVA (16%)</span><span>${money(o.tax)}</span></div>
+        <div class="flex justify-between items-center font-bold pt-2 border-t border-steel-200">
+          <span class="text-navy-900">Total</span><span class="font-disp text-lg text-navy-900">${money(o.total)}</span>
+        </div>
+      </div>
+      <div>
+        <div class="kicker mb-2">Seguimiento</div>
+        <div class="space-y-2">
+          ${[...(o.history || [])].reverse().map(h => `
+            <div class="flex items-center gap-2 text-xs">
+              <i class="fa-solid ${(ST[h.status] || {}).ic || 'fa-circle'} text-steel-400 w-4"></i>
+              <span class="font-semibold text-navy-900">${(ST[h.status] || {}).l || esc(h.status)}</span>
+              <span class="text-steel-400">·</span>
+              <span class="text-steel-500">${fDT(h.ts)}</span>
+              <span class="text-steel-400 ml-auto font-mono text-[10px]">${esc(h.by || '')}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      <button onclick="closeModal()" class="btn-navy w-full py-2.5 text-sm rounded-xl">Cerrar</button>
+    </div>`, true);
+}
+
+function setOrderStatus(id, st) {
+  const o = db.orders.find(x => x.id === id); if (!o) return;
+  const doIt = () => {
+    if (st === 'despachado') {
+      o.items.forEach(i => {
+        const p = prod(i.code);
+        if (p) p.stock = Math.max(0, p.stock - i.qty);
+      });
+    }
+    o.status = st;
+    o.history.push({ status: st, ts: Date.now(), by: session.name });
+    logActivity(st === 'aprobado' ? 'fa-circle-check' : st === 'despachado' ? 'fa-truck-fast' : 'fa-circle-xmark',
+      `Pedido ${o.number} ${ST[st].l.toLowerCase()} por ${session.name}`);
+    saveDB(); renderView(); setNav();
+    toast(`Pedido <b>${esc(o.number)}</b> marcado como ${ST[st].l}.`, st === 'rechazado' ? 'warn' : 'ok');
+  };
+  if (st === 'rechazado')       confirmDialog('Rechazar pedido',  `¿Rechazar <b>${esc(o.number)}</b> de ${esc((o.client || {}).name || 'cliente')}?`, 'Rechazar', doIt, true);
+  else if (st === 'despachado') confirmDialog('Despachar pedido', `¿Confirmar despacho de <b>${esc(o.number)}</b>? Se descontará el stock del inventario.`, 'Despachar', doIt, false);
+  else doIt();
+}
+
+function toggleJornada(id) {
+  const u = sellerById(id); if (!u) return;
+  const j = db.jornada[id];
+  if (j && !j.end) {
+    j.end = Date.now();
+    logActivity('fa-flag-checkered', `${u.name} finalizó jornada`);
+    toast(`Jornada de <b>${esc(u.name)}</b> finalizada.`, 'info');
+  } else {
+    db.jornada[id] = { start: Date.now(), end: null };
+    logActivity('fa-play', `${u.name} inició jornada`);
+    toast(`Jornada de <b>${esc(u.name)}</b> iniciada.`, 'ok');
+  }
+  saveDB(); renderCrew();
+}
+
+function adjustStock(code, delta) {
+  const p = prod(code); if (!p) return;
+  p.stock = Math.max(0, p.stock + delta);
+  saveDB(); renderInventoryList();
+}
+
+function exportDB() {
+  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `truckfilters-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(a.href);
+  toast('Respaldo exportado correctamente.', 'ok');
+}
+
+function importDB(input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!Array.isArray(d.products) || !Array.isArray(d.orders)) throw new Error('formato inválido');
+      db = d;
+      migrateDB(); /* normaliza vendedores, bitácora, jornadas y contador */
+      saveDB(); renderView(); setNav();
+      toast('Respaldo importado correctamente.', 'ok');
+    } catch(e) {
+      console.error(e);
+      toast('Archivo inválido. Usa un respaldo generado por esta aplicación.', 'bad');
+    }
+  };
+  r.readAsText(f);
+  input.value = '';
+}
+
+function resetDB() {
+  confirmDialog('Reiniciar datos', 'Se restaurará la base de datos de demostración. Los cambios actuales se perderán.', 'Reiniciar', () => {
+    db = seedDB(); saveDB(); renderView(); setNav();
+    toast('Datos restaurados a valores de fábrica.', 'ok');
+  }, true);
+}
+
+/* ============================ 16. CRUD DE VENDEDORES (dinámico) ============================ */
+function saveSellerForm(e) {
+  e.preventDefault();
+  const name  = ($('#s-name').value  || '').trim();
+  const id    = ($('#s-id').value    || '').trim();
+  const zone  = ($('#s-zone').value  || '').trim();
+  const pin   = ($('#s-pin').value   || '').trim();
+  const editId = $('#s-editId').value; /* id original si se está editando */
+
+  if (!name || !id || !zone || !pin) { toast('Completa todos los campos.', 'warn'); return; }
+  if (!/^\d{4}$/.test(pin)) { toast('El PIN debe tener exactamente 4 dígitos.', 'warn'); return; }
+  if (getSellers().some(s => s.id.toLowerCase() === id.toLowerCase() && s.id !== editId)) {
+    toast('Esa cédula/ID ya está asignada a otro vendedor.', 'warn'); return;
+  }
+  if (getSellers().some(s => s.name.toLowerCase() === name.toLowerCase() && s.id !== editId)) {
+    toast('Ya existe un vendedor con ese nombre (se usa para el login).', 'warn'); return;
+  }
+
+  if (editId) {
+    const s = sellerById(editId);
+    if (!s) { toast('El vendedor a editar ya no existe.', 'bad'); return; }
+    const renamed = s.name !== name;
+    /* Si cambia el ID, migra la clave de jornada para no perder el registro */
+    if (editId !== id && db.jornada[editId]) { db.jornada[id] = db.jornada[editId]; delete db.jornada[editId]; }
+    s.name = name; s.id = id; s.zone = zone; s.pin = pin;
+    logActivity('fa-user-pen', `Vendedor actualizado: ${name} (${id})`);
+    saveDB(); resetSellerForm(); renderCrew();
+    toast(`Ficha de <b>${esc(name)}</b> actualizada.`, 'ok');
+  } else {
+    getSellers().push({ id, name, zone, pin, active: true });
+    logActivity('fa-user-plus', `Vendedor registrado: ${name} (${id}) — zona ${zone}`);
+    saveDB(); resetSellerForm(); renderCrew();
+    toast(`<b>${esc(name)}</b> registrado. Ya puede iniciar sesión como vendedor.`, 'ok');
+  }
+}
+
+function resetSellerForm() {
+  const form = document.getElementById('sellerForm'); if (form) form.reset();
+  $('#s-editId').value = '';
+  const idInput = $('#s-id'); if (idInput) idInput.placeholder = nextSellerId();
+  const btn = $('#sellerSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Registrar vendedor';
+}
+
+function editSeller(i) {
+  const s = getSellers()[i]; if (!s) return;
+  const d = document.getElementById('sellerMgmt'); if (d) d.open = true;
+  $('#s-editId').value = s.id;
+  $('#s-name').value = s.name;
+  $('#s-id').value   = s.id;
+  $('#s-zone').value = s.zone;
+  $('#s-pin').value  = s.pin;
+  const btn = $('#sellerSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Actualizar vendedor';
+  const form = document.getElementById('sellerForm');
+  if (form) setTimeout(() => form.scrollIntoView({ behavior:'smooth', block:'center' }), 60);
+  toast(`Editando a <b>${esc(s.name)}</b>.`, 'info');
+}
+
+function toggleSellerActive(i) {
+  const s = getSellers()[i]; if (!s) return;
+  const on = s.active !== false;
+  const doIt = () => {
+    s.active = !on;
+    /* Si se da de baja con jornada abierta, se cierra para no dejar rutas colgadas */
+    if (on && db.jornada[s.id] && !db.jornada[s.id].end) db.jornada[s.id].end = Date.now();
+    logActivity(on ? 'fa-user-slash' : 'fa-user-check', on ? `Vendedor dado de baja: ${s.name}` : `Vendedor reactivado: ${s.name}`);
+    saveDB(); renderCrew();
+    toast(on ? `<b>${esc(s.name)}</b> dado de baja. Ya no aparecerá en el login ni en jornadas.` : `<b>${esc(s.name)}</b> reactivado.`, on ? 'warn' : 'ok');
+  };
+  confirmDialog(on ? 'Dar de baja' : 'Reactivar vendedor',
+    on ? `¿Dar de baja a <b>${esc(s.name)}</b>? Conservará su historial de pedidos y podrás reactivarlo cuando quieras.`
+       : `¿Reactivar a <b>${esc(s.name)}</b>? Volverá a estar disponible en el login y las jornadas.`,
+    on ? 'Dar de baja' : 'Reactivar', doIt, on);
+}
+
+function deleteSeller(i) {
+  const s = getSellers()[i]; if (!s) return;
+  if (db.orders.some(o => o.sellerId === s.id)) {
+    toast('<b>' + esc(s.name) + '</b> tiene pedidos asociados. Usa "Dar de baja" para conservar el historial.', 'warn');
+    return;
+  }
+  confirmDialog('Eliminar vendedor', `¿Eliminar definitivamente a <b>${esc(s.name)}</b> (${esc(s.id)})? Esta acción no se puede deshacer.`, 'Eliminar', () => {
+    getSellers().splice(i, 1);
+    delete db.jornada[s.id];
+    logActivity('fa-user-minus', `Vendedor eliminado: ${s.name} (${s.id})`);
+    saveDB(); resetSellerForm(); renderCrew();
+    toast('Vendedor eliminado del sistema.', 'warn');
+  }, true);
+}
+
+/* ============================ 17. VISTAS — INVENTARIO / RESPALDO ============================ */
+function invRows() {
+  const q = (ui.invQ || '').toLowerCase().trim();
+  const list = (db.products || PRODUCTS).filter(p => !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
+  if (!list.length) {
+    return `<div class="card text-center py-10 space-y-2">
+      <i class="fa-solid fa-box-open text-3xl text-steel-300"></i>
+      <p class="text-sm text-steel-500">Sin referencias que coincidan.</p>
+    </div>`;
+  }
+  return list.map(p => {
+    const stCls = p.stock <= 0 ? 'bg-red-50 text-red-700 border-red-300' : p.stock < 20 ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-emerald-50 text-emerald-700 border-emerald-300';
+    return `
+    <div class="card flex flex-col sm:flex-row sm:items-center gap-4">
+      <div class="blueprint border border-steel-200 rounded-lg p-2 shrink-0 self-start sm:self-center">${techSVG(p)}</div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-[10px] font-mono font-bold text-steel-400">${esc(p.code)}</span>
+          <span class="tag bg-steel-100 text-steel-600 border border-steel-200"><i class="fa-solid ${(TYPE_META[p.type] || {}).icon || 'fa-filter'}"></i>${(TYPE_META[p.type] || {}).l || esc(p.type)}</span>
+        </div>
+        <div class="font-semibold text-sm text-navy-900 mt-1">${esc(p.name)}</div>
+        <div class="text-[11px] text-steel-500 mt-0.5">Precio: <b>${money(p.price)}</b> · Volumen mín.: ${p.minVol} u (−${volDisc(p.minVol)}%)</div>
+      </div>
+      <div class="flex items-center gap-3 shrink-0">
+        <span class="tag border ${stCls}"><i class="fa-solid fa-cubes"></i> ${p.stock} u</span>
+        <div class="flex items-center gap-1">
+          <button onclick="adjustStock('${p.code}',-1)" class="btn-line w-8 h-8 rounded-lg" title="Restar 1" aria-label="Restar 1"><i class="fa-solid fa-minus text-[10px]"></i></button>
+          <button onclick="adjustStock('${p.code}',10)" class="btn-line w-8 h-8 rounded-lg" title="Sumar 10" aria-label="Sumar 10"><i class="fa-solid fa-plus text-[10px]"></i></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderInventoryList() { const el = document.getElementById('inv-list'); if (el) el.innerHTML = invRows(); }
+
+function viewInventory() {
+  return `
+  <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
+    <div>
+      <div class="kicker mb-1">Almacén · Galpón 4, Valencia</div>
+      <h2 class="text-xl font-bold text-navy-900 font-disp">Inventario</h2>
+    </div>
+    <div class="relative">
+      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-steel-400 text-sm"></i>
+      <input value="${esc(ui.invQ)}" oninput="ui.invQ=this.value;renderInventoryList()" class="input pl-9" placeholder="Buscar por código o nombre...">
+    </div>
+    <div id="inv-list" class="space-y-3">${invRows()}</div>
+    <div class="bg-navy-50 border border-navy-100 rounded-2xl shadow-sm p-4 flex items-start gap-3">
+      <i class="fa-solid fa-circle-info text-navy-700 mt-0.5"></i>
+      <p class="text-xs text-navy-700">El stock se descuenta automáticamente cuando un pedido pasa a <b>Despachado</b> desde la vista Pedidos.</p>
+    </div>
+  </div>`;
+}
+
+function viewBackup() {
+  const sizeKB = (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1);
+  const cards = [
+    { ic:'fa-file-invoice', l:'Pedidos',    v: db.orders.length,                 cls:'bg-navy-800 text-white' },
+    { ic:'fa-filter',       l:'Productos',  v: (db.products || PRODUCTS).length, cls:'bg-navy-700 text-white' },
+    { ic:'fa-users',        l:'Vendedores', v: getSellers().length,              cls:'bg-steel-500 text-white' },
+    { ic:'fa-hard-drive',   l:'Tamaño',     v: sizeKB + ' KB',                   cls:'bg-acc text-navy-950' }
+  ];
+  return `
+  <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
+    <div>
+      <div class="kicker mb-1">Datos locales · localStorage</div>
+      <h2 class="text-xl font-bold text-navy-900 font-disp">Respaldo y sincronización</h2>
+    </div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      ${cards.map(c => `
+        <div class="card flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl ${c.cls} flex items-center justify-center shrink-0"><i class="fa-solid ${c.ic}"></i></div>
+          <div class="min-w-0">
+            <div class="kicker truncate">${c.l}</div>
+            <div class="text-lg font-bold font-disp text-navy-900 mt-0.5 truncate">${c.v}</div>
+          </div>
+        </div>`).join('')}
+    </div>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="card space-y-3">
+        <div class="flex items-center gap-2"><i class="fa-solid fa-download text-navy-800"></i><h3 class="sec-title">Exportar</h3></div>
+        <p class="text-xs text-steel-500">Descarga un respaldo JSON con pedidos, inventario, vendedores y jornadas.</p>
+        <button onclick="exportDB()" class="btn-navy w-full py-2.5 text-sm rounded-xl"><i class="fa-solid fa-download"></i> Descargar respaldo</button>
+      </div>
+      <div class="card space-y-3">
+        <div class="flex items-center gap-2"><i class="fa-solid fa-upload text-navy-800"></i><h3 class="sec-title">Importar</h3></div>
+        <p class="text-xs text-steel-500">Restaura desde un archivo JSON generado por esta misma aplicación.</p>
+        <label class="btn-line w-full py-2.5 text-sm rounded-xl cursor-pointer">
+          <i class="fa-solid fa-file-import"></i> Seleccionar archivo
+          <input type="file" accept="application/json,.json" class="hidden" onchange="importDB(this)">
+        </label>
+      </div>
+      <div class="card space-y-3">
+        <div class="flex items-center gap-2"><i class="fa-solid fa-rotate-left text-red-600"></i><h3 class="sec-title">Reiniciar</h3></div>
+        <p class="text-xs text-steel-500">Vuelve a los datos de demostración de fábrica. Acción irreversible.</p>
+        <button onclick="resetDB()" class="btn-bad w-full py-2.5 text-sm rounded-xl"><i class="fa-solid fa-triangle-exclamation"></i> Reiniciar datos</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3 class="sec-title mb-3"><i class="fa-solid fa-wave-square text-acc-dark mr-1"></i> Bitácora del sistema</h3>
+      <div class="space-y-1">
+        ${(db.activity || []).slice(0, 8).map(a => `
+          <div class="flex items-center gap-3 py-2 border-b border-steel-100 last:border-0 text-xs">
+            <i class="fa-solid ${a.ic || 'fa-circle'} text-steel-400 w-4"></i>
+            <span class="flex-1 text-navy-900">${esc(a.t)}</span>
+            <span class="font-mono text-steel-400 shrink-0">${fDT(a.ts)}</span>
+          </div>`).join('') || '<p class="text-xs text-steel-500">Sin actividad registrada.</p>'}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============================ 18. GESTIÓN CATÁLOGO VISUAL CAR-SEV ============================ */
+const STORAGE_KEY = 'TRUCK_filters_catalog_v1';
+const defaultFilters = [
+  { codigo:'TF-2810', aplicacion:'Mack / Iveco',                 dimensiones:'Alt: 155mm | Diám: 95mm',   imagen:'tf-2810.jpg' },
+  { codigo:'TF-3050', aplicacion:'Ford Cargo / Cummins',         dimensiones:'Alt: 210mm | Rosca: 1"-12', imagen:'tf-3050.jpg' },
+  { codigo:'TF-1180', aplicacion:'Chevrolet NPR / Isuzu 4HF1',   dimensiones:'Alt: 180mm | Diám: 86mm',   imagen:'tf-1180.jpg' }
+];
+
+let pendingFilterPhoto = null; /* dataURL de la foto subida, pendiente por guardar */
+
+function saveFilters(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+function getFilters() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr)) return arr; }
+  } catch(e){}
+  saveFilters(defaultFilters);
+  return [...defaultFilters];
+}
+
+/* Resuelve la fuente de imagen: foto subida (dataURL) → ruta → plano de reemplazo */
+function filterImgSrc(f) {
+  if (f && f.img) return f.img;
+  if (f && f.imagen) return 'assets/img/filters/' + f.imagen;
+  return FILTER_IMG_FALLBACK;
+}
+
+function renderFilterCatalogGrid() {
+  const grid = document.getElementById('filterCatalogGrid');
+  if (!grid) return;
+  const all = getFilters().map((f, i) => ({ ...f, __i: i }));
+  const q = (ui.filterQ || '').toLowerCase().trim();
+  const list = all.filter(f => !q ||
+    (f.codigo      || '').toLowerCase().includes(q) ||
+    (f.aplicacion  || '').toLowerCase().includes(q) ||
+    (f.dimensiones || '').toLowerCase().includes(q));
+
+  /* Contador dinámico + visibilidad del botón de limpiar */
+  const count = document.getElementById('filterCount');
+  if (count) {
+    count.textContent = all.length === 0 ? 'Sin referencias'
+      : q ? `${list.length} de ${all.length} coincidencia${list.length === 1 ? '' : 's'}`
+          : `${all.length} referencia${all.length === 1 ? '' : 's'}`;
+  }
+  const clr = document.getElementById('filterClear');
+  if (clr) clr.classList.toggle('hidden', !q);
+
+  if (!list.length) {
+    grid.innerHTML = `<div class="card col-span-full text-center py-10 space-y-2">
+      <i class="fa-solid fa-images text-3xl text-steel-300"></i>
+      <p class="text-sm text-steel-500">${q ? 'Sin resultados para "<b>' + esc(ui.filterQ) + '</b>".' : 'Aún no hay filtros registrados. Agrega el primero desde la gestión inferior.'}</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(f => `
+    <article class="card p-0 overflow-hidden flex flex-col group">
+      <button onclick="openFilterPhoto(${f.__i})" class="relative block bg-steel-50 border-b border-steel-100 overflow-hidden" title="Ampliar fotografía" aria-label="Ampliar fotografía de ${esc(f.codigo)}">
+        <img src="${filterImgSrc(f)}" alt="Filtro ${esc(f.codigo)}" loading="lazy"
+             class="w-full h-44 object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+             onerror="this.onerror=null;this.src=FILTER_IMG_FALLBACK">
+        <span class="absolute top-2 left-2 px-2 py-1 rounded-lg bg-navy-900/85 text-white text-[10px] font-mono font-bold backdrop-blur-sm">${esc(f.codigo)}</span>
+        <span class="absolute bottom-2 right-2 w-7 h-7 rounded-lg bg-white/90 text-navy-800 flex items-center justify-center shadow-sm"><i class="fa-solid fa-magnifying-glass-plus text-xs"></i></span>
+      </button>
+      <div class="p-4 flex flex-col gap-2 flex-1">
+        <div class="flex-1">
+          <h4 class="font-semibold text-sm text-navy-900 leading-snug">${esc(f.aplicacion)}</h4>
+          <p class="text-[11px] text-steel-500 font-mono mt-1">${esc(f.dimensiones)}</p>
+        </div>
+        <div class="flex gap-2 pt-2 border-t border-steel-100">
+          <button onclick="openFilterPhoto(${f.__i})" class="btn-line px-3 py-1.5 text-xs rounded-lg flex-1"><i class="fa-solid fa-expand"></i> Ver ficha</button>
+          <button onclick="editFilter(${f.__i})" class="btn-line px-3 py-1.5 text-xs rounded-lg" aria-label="Editar ${esc(f.codigo)}"><i class="fa-solid fa-pen text-xs"></i></button>
+          <button onclick="deleteFilter(${f.__i})" class="btn-bad px-3 py-1.5 text-xs rounded-lg" aria-label="Eliminar ${esc(f.codigo)}"><i class="fa-solid fa-trash text-xs"></i></button>
+        </div>
+      </div>
+    </article>`).join('');
+}
+
+function openFilterPhoto(i) {
+  const f = getFilters()[i]; if (!f) return;
+  openModal(`
+    <div class="p-5 space-y-4">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="kicker mb-1">Ficha visual · Línea CAR-SEV</div>
+          <h3 class="text-lg font-bold font-disp text-navy-900">${esc(f.codigo)}</h3>
+        </div>
+        <button onclick="closeModal()" class="btn-line w-9 h-9 rounded-lg shrink-0" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="rounded-xl overflow-hidden border border-steel-200 bg-steel-50">
+        <img src="${filterImgSrc(f)}" alt="Fotografía del filtro ${esc(f.codigo)}" class="w-full max-h-[50vh] object-contain"
+             onerror="this.onerror=null;this.src=FILTER_IMG_FALLBACK">
+      </div>
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div class="bg-steel-50 border border-steel-200 rounded-xl p-3">
+          <div class="kicker">Aplicación</div>
+          <div class="font-semibold text-navy-900 mt-0.5">${esc(f.aplicacion)}</div>
+        </div>
+        <div class="bg-steel-50 border border-steel-200 rounded-xl p-3">
+          <div class="kicker">Dimensiones</div>
+          <div class="font-semibold text-navy-900 mt-0.5 font-mono">${esc(f.dimensiones)}</div>
+        </div>
+      </div>
+      <p class="text-[10px] text-steel-400 font-mono text-center">${f.img ? 'Fotografía cargada al equipo' : 'assets/img/filters/' + esc(f.imagen || '—')}</p>
+      <div class="flex gap-2">
+        <button onclick="closeModal();editFilter(${f.__i})" class="btn-line px-4 py-2 text-xs rounded-xl flex-1"><i class="fa-solid fa-pen"></i> Editar ficha</button>
+        <button onclick="closeModal()" class="btn-navy px-4 py-2 text-xs rounded-xl flex-1">Cerrar</button>
+      </div>
+    </div>`);
+}
+
+function handleFilterPhoto(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (!/^image\//.test(file.type)) { toast('Selecciona un archivo de imagen (JPG o PNG).', 'warn'); input.value = ''; return; }
+  const r = new FileReader();
+  r.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 800;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const cv = document.createElement('canvas');
+      cv.width  = Math.round(img.width  * scale);
+      cv.height = Math.round(img.height * scale);
+      try { cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); pendingFilterPhoto = cv.toDataURL('image/jpeg', 0.85); }
+      catch(err) { pendingFilterPhoto = r.result; }
+      const pv = document.getElementById('imgPreview'); if (pv) pv.src = pendingFilterPhoto;
+      toast('Foto lista. Se guardará con la ficha.', 'ok', 2200);
+    };
+    img.onerror = () => { toast('No se pudo procesar la imagen.', 'bad'); };
+    img.src = r.result;
+  };
+  r.readAsDataURL(file);
+  input.value = '';
+}
+
+function handleSaveFilter(e) {
+  e.preventDefault();
+  const f = {
+    codigo:      ($('#inputCodigo').value      || '').trim().toUpperCase(),
+    aplicacion:  ($('#inputAplicacion').value  || '').trim(),
+    dimensiones: ($('#inputDimensiones').value || '').trim(),
+    imagen:      ($('#inputImagen').value      || '').trim()
+  };
+  if (!f.codigo || !f.aplicacion || !f.dimensiones) { toast('Completa código, aplicación y dimensiones.', 'warn'); return; }
+  const list = getFilters();
+  const idxRaw = $('#editIndex').value;
+  const editing = idxRaw !== '' && list[+idxRaw];
+  f.img = pendingFilterPhoto || (editing ? list[+idxRaw].img || null : null);
+  if (editing) list[+idxRaw] = f; else list.push(f);
+  saveFilters(list);
+  resetAdminForm();
+  renderFilterCatalogGrid();
+  toast(editing ? `Ficha <b>${esc(f.codigo)}</b> actualizada.` : `Filtro <b>${esc(f.codigo)}</b> agregado al catálogo visual.`, 'ok');
+}
+
+function resetAdminForm() {
+  const form = document.getElementById('filterAdminForm'); if (form) form.reset();
+  $('#editIndex').value = '';
+  pendingFilterPhoto = null;
+  const pv = document.getElementById('imgPreview'); if (pv) pv.src = FILTER_IMG_FALLBACK;
+  const btn = $('#filterSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar filtro';
+}
+
+function editFilter(i) {
+  const f = getFilters()[i]; if (!f) return;
+  const d = document.getElementById('filterFormDetails'); if (d) d.open = true;
+  $('#editIndex').value = String(i);
+  $('#inputCodigo').value      = f.codigo      || '';
+  $('#inputAplicacion').value  = f.aplicacion  || '';
+  $('#inputDimensiones').value = f.dimensiones || '';
+  $('#inputImagen').value      = f.imagen      || '';
+  pendingFilterPhoto = f.img || null;
+  const pv = document.getElementById('imgPreview'); if (pv) pv.src = filterImgSrc(f);
+  const btn = $('#filterSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Actualizar filtro';
+  const form = document.getElementById('filterAdminForm');
+  if (form) setTimeout(() => form.scrollIntoView({ behavior:'smooth', block:'center' }), 60);
+  toast(`Editando <b>${esc(f.codigo)}</b>.`, 'info');
+}
+
+function deleteFilter(i) {
+  const list = getFilters(); const f = list[i]; if (!f) return;
+  confirmDialog('Eliminar filtro', `¿Eliminar <b>${esc(f.codigo)}</b> (${esc(f.aplicacion)}) del catálogo visual?`, 'Eliminar', () => {
+    list.splice(i, 1); saveFilters(list); renderFilterCatalogGrid();
+    toast('Filtro eliminado del catálogo.', 'warn');
+  }, true);
+}
+
+/* ============================ 19. MOTOR DE RENDERIZADO ============================ */
+function renderView() {
+  const v = $('#view');
+  if (!v) return;
+  let html = '';
+  try {
+    switch (ui.view) {
+      case 'catalog':   html = viewCatalog();   break;
+      case 'tools':     html = viewTools();     break;
+      case 'cart':      html = viewCart();      break;
+      case 'history':   html = viewHistory();   break;
+      case 'dash':      html = viewDash();      break;
+      case 'orders':    html = viewOrders();    break;
+      case 'crew':      html = viewCrew();      break;
+      case 'inventory': html = viewInventory(); break;
+      case 'backup':    html = viewBackup();    break;
+      default:
+        html = `
+        <div class="p-4 pb-24 max-w-3xl mx-auto">
+          <div class="card text-center space-y-3">
+            <i class="fa-solid fa-map-signs text-3xl text-steel-300"></i>
+            <p class="text-sm text-steel-500">La vista "<b>${esc(ui.view)}</b>" no está disponible.</p>
+            <button onclick="go(defaultView())" class="btn-navy px-4 py-2 text-xs rounded-xl mx-auto">Volver al inicio</button>
+          </div>
+        </div>`;
+    }
+  } catch (err) {
+    console.error('renderView("' + ui.view + '"):', err);
+    html = `
+    <div class="p-4 pb-24 max-w-3xl mx-auto">
+      <div class="bg-white border border-red-200 rounded-2xl shadow-sm p-5 text-center space-y-3">
+        <i class="fa-solid fa-bug text-3xl text-red-300"></i>
+        <p class="text-sm text-steel-600">No se pudo dibujar esta vista. Revisa la consola para más detalles.</p>
+        <button onclick="renderView()" class="btn-line px-4 py-2 text-xs rounded-xl mx-auto"><i class="fa-solid fa-rotate-right"></i> Reintentar</button>
+      </div>
+    </div>`;
+  }
+  v.innerHTML = html;
+  if (ui.view === 'catalog') renderFilterCatalogGrid();
+}
+
+/* ============================ 20. ARRANQUE ============================ */
+function initApp() {
+  if (!session) { renderLogin(); return; }
+  loadCart();
+  /* Sanidad: si la vista actual no pertenece al NAV del rol, volver a la inicial */
+  if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
+  renderShell();
+  renderView();
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+window.addEventListener('online', updateConnChip);
+window.addEventListener('offline', updateConnChip);
+</script>
+</body>
+</html>
