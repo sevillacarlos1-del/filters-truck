@@ -1396,8 +1396,10 @@ function crewBodyHTML() {
   </div>`;
 }
 
-/* Fila de cada vendedor: nombre + PIN a la izquierda, acciones a la derecha.
-   La PAPELERA aparece SIEMPRE junto a cada vendedor (exclusivo del panel admin). */
+/* ============ LISTA DE VENDEDORES — FILAS DEL PANEL ADMIN (renderSellers) ============ */
+/* Fila de cada vendedor: avatar + nombre + estado a la izquierda; ID · zona · PIN debajo.
+   Acciones a la derecha: Editar, Dar de baja/Reactivar y PAPELERA (siempre visible).
+   La cestica enlaza con deleteSeller(i); la protección de pedidos vive en esa función. */
 function sellerRowHTML(s, i) {
   const on = s.active !== false;
   return `
@@ -1411,14 +1413,22 @@ function sellerRowHTML(s, i) {
       <div class="text-[11px] text-steel-500 truncate"><span class="font-mono">${esc(s.id)}</span> · ${esc(s.zone)} · PIN <span class="font-mono">${esc(s.pin)}</span></div>
     </div>
     <div class="flex items-center gap-1 shrink-0">
-      <button onclick="editSeller(${i})" class="btn-line w-8 h-8 rounded-lg" title="Editar" aria-label="Editar ${esc(s.name)}"><i class="fa-solid fa-pen text-[10px]"></i></button>
-      <button onclick="toggleSellerActive(${i})" class="btn-line w-8 h-8 rounded-lg" title="${on ? 'Dar de baja' : 'Reactivar'}" aria-label="${on ? 'Dar de baja' : 'Reactivar'} ${esc(s.name)}"><i class="fa-solid ${on ? 'fa-user-slash' : 'fa-user-check'} text-[10px]"></i></button>
-      <button onclick="deleteSeller(${i})" class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Eliminar definitivamente de la base de datos" aria-label="Eliminar ${esc(s.name)}">
+      <button onclick="editSeller(${i})" class="btn-line w-8 h-8 rounded-lg" title="Editar" aria-label="Editar ${esc(s.name)}">
+        <i class="fa-solid fa-pen text-[10px]"></i>
+      </button>
+      <button onclick="toggleSellerActive(${i})" class="btn-line w-8 h-8 rounded-lg" title="${on ? 'Dar de baja' : 'Reactivar'}" aria-label="${on ? 'Dar de baja' : 'Reactivar'} ${esc(s.name)}">
+        <i class="fa-solid ${on ? 'fa-user-slash' : 'fa-user-check'} text-[10px]"></i>
+      </button>
+      <button onclick="deleteSeller(${i})" class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Eliminar definitivamente" aria-label="Eliminar ${esc(s.name)}">
         <i class="fa-solid fa-trash text-[10px]"></i>
       </button>
     </div>
   </div>`;
 }
+
+/* Alias por si tu código llama renderSellers() en vez de renderCrew() */
+const renderSellers = renderCrew;
+
 
 function crewCardHTML(u, today) {
   const j = db.jornada[u.id];
@@ -1703,24 +1713,21 @@ function toggleSellerActive(i) {
     on ? 'Dar de baja' : 'Reactivar', doIt, on);
 }
 
-/* PAPELERA: elimina el registro del vendedor de db.sellers y lo propaga a
-   Firebase Firestore DE INMEDIATO (queueCloudSync(0)). El onSnapshot de los
-   demás equipos aplica el cambio en tiempo real y, si ese vendedor tenía
-   sesión abierta en su teléfono, validateSession() la revoca al instante. */
+/* ============ ELIMINAR VENDEDOR (papelera) — solo admin, sync Firestore inmediato ============ */
 function deleteSeller(i) {
   if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
   const s = getSellers()[i]; if (!s) return;
   const nOrders = db.orders.filter(o => o.sellerId === s.id).length;
   const msg = nOrders
-    ? `Se eliminará a <b>${esc(s.name)}</b> (${esc(s.id)}) de la base de datos. Tiene <b>${nOrders}</b> pedido(s) asociados: su nombre quedará impreso en ellos, pero la cuenta y su acceso se borrarán por completo de todos los dispositivos.`
+    ? `Se eliminará a <b>${esc(s.name)}</b> (${esc(s.id)}) de la base de datos. Tiene <b>${nOrders}</b> pedido(s) asociados: su nombre quedará impreso en ellos, pero la cuenta y su acceso se borrarán de todos los dispositivos.`
     : `¿Eliminar definitivamente a <b>${esc(s.name)}</b> (${esc(s.id)})? La cuenta se borrará de la nube y desaparecerá de todos los teléfonos en tiempo real. Esta acción no se puede deshacer.`;
   confirmDialog('Eliminar vendedor', msg, 'Eliminar', () => {
     getSellers().splice(i, 1);
     delete db.jornada[s.id];
     logActivity('fa-user-minus', `Vendedor eliminado: ${s.name} (${s.id})`);
     saveDB();
-    queueCloudSync(0);            /* sube el cambio a Firestore al instante */
-    resetSellerForm(); renderCrew(); /* actualiza la lista de la interfaz YA */
+    queueCloudSync(0);               /* sube el cambio a Firestore al instante */
+    resetSellerForm(); renderCrew(); /* refresca la lista YA */
     toast(`Vendedor <b>${esc(s.name)}</b> eliminado y sincronizado en la nube.`, 'warn');
   }, true);
 }
