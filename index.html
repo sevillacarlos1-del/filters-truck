@@ -119,7 +119,8 @@ const DB_KEY     = 'tf_db_v2';
 const SESS_KEY   = 'tf_session_v2';
 const CART_PRE   = 'tf_cart_';
 const IVA_RATE   = 0.16;
-const ADMIN_USER = { pass:'XTRUCK2025', name:'Administración', role:'admin' };
+/* Contraseña administrativa OBLIGATORIA para acceder al panel de oficina */
+const ADMIN_USER = { pass:'XXTRUCK2025', name:'Administración', role:'admin' };
 
 /* USERS es SOLO la semilla de fábrica: la lista real y editable vive en db.sellers (nube + localStorage). */
 const USERS = [];
@@ -194,17 +195,7 @@ function toast(msg, type='info', ms=3400) {
 
 /* ======================================================================
    3.5 CAPA DE NUBE — Firebase Firestore (tiempo real)
-   ----------------------------------------------------------------------
-   PASOS (una sola vez, en https://console.firebase.google.com):
-   1) Crear proyecto → agregar app Web → copiar el objeto firebaseConfig.
-   2) Pegar ese objeto abajo en FIREBASE_CONFIG (reemplaza los "PEGA_AQUI").
-   3) Firestore Database → Crear base (modo producción) → pegar reglas del
-      archivo firestore.rules entregado junto a este index.html.
-   4) git push. Listo: cada guardia de la app se propaga con debounce y los
-      demás equipos lo reciben en vivo por onSnapshot (sin git push).
-   Nota: el documento tiene límite de 1 MB — las fotos CAR-SEV se comprimen
-   a ~100 KB c/u (800px JPEG), suficiente para el catálogo actual.
-   ====================================================================== */
+   ---------------------------------------------------------------------- */
 const FIREBASE_CONFIG = {
   apiKey:            "PEGA_AQUI_TU_API_KEY",
   authDomain:        "PEGA_AQUI.firebaseapp.com",
@@ -214,14 +205,14 @@ const FIREBASE_CONFIG = {
   appId:             "PEGA_AQUI_APP_ID"
 };
 
-const CLOUD_DOC   = 'truckfilters/state';   /* colección/documento único de estado */
+const CLOUD_DOC   = 'truckfilters/state';
 const CLIENT_ID   = 'C' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-let   FS          = null;        /* instancia firestore */
+let   FS          = null;
 let   cloudReady  = false;
-let   cloudDirty  = false;       /* hay cambios locales pendientes de subir */
+let   cloudDirty  = false;
 let   cloudTimer  = null;
-let   lastCloudRev = 0;          /* última revisión aplicada/recibida */
-let   applyingRemote = false;    /* evita re-propagar lo que acabamos de recibir */
+let   lastCloudRev = 0;
+let   applyingRemote = false;
 let   cloudStatus = 'off';       /* off | ok | sync | cfg */
 
 function setCloudStatus(s) { cloudStatus = s; updateConnChip(); }
@@ -232,7 +223,6 @@ function cloudInit() {
   try {
     firebase.initializeApp(FIREBASE_CONFIG);
     FS = firebase.firestore();
-    /* Caché offline en el teléfono: la PWA sigue leyendo/escribiendo sin señal */
     FS.enablePersistence({ synchronizeTabs: true }).catch(() => {});
     cloudReady = true;
     cloudSubscribe();
@@ -245,31 +235,27 @@ function cloudInit() {
 
 const cloudRef = () => (cloudReady && FS) ? FS.doc(CLOUD_DOC) : null;
 
-/* Lectura inicial: al abrir la app, trae el estado más reciente de la nube */
 function cloudPull() {
   const r = cloudRef(); if (!r) return;
   setCloudStatus('sync');
   r.get().then(snap => {
     if (snap.exists) applyRemote(snap.data());
-    else queueCloudSync(0); /* primer dispositivo: siembra la nube con el estado local */
+    else queueCloudSync(0);
     setCloudStatus('ok');
   }).catch(err => { console.error('cloudPull:', err); setCloudStatus('off'); });
 }
 
-/* Escucha en vivo: cualquier cambio de otro equipo llega aquí al instante */
 function cloudSubscribe() {
   const r = cloudRef(); if (!r) return;
   r.onSnapshot(snap => {
     if (!snap.exists) return;
     const data = snap.data();
-    if (data.writer === CLIENT_ID) return;        /* eco de nuestra propia escritura */
-    if ((data.rev || 0) <= lastCloudRev) return;  /* ya aplicado */
+    if (data.writer === CLIENT_ID) return;
+    if ((data.rev || 0) <= lastCloudRev) return;
     applyRemote(data);
   }, err => { console.error('onSnapshot:', err); setCloudStatus('off'); });
 }
 
-/* Merge al recibir: la nube manda en catálogo/vendedores/fotos; los pedidos y
-   jornadas se UNEN por id para no pisar trabajo concurrente de otros equipos. */
 function mergeRemote(remote, local) {
   const m = JSON.parse(JSON.stringify(local));
   m.products = Array.isArray(remote.products) ? remote.products : m.products;
@@ -302,10 +288,9 @@ function applyRemote(data) {
   try {
     lastCloudRev = Math.max(lastCloudRev, data.rev || 0);
     if (data.db) db = mergeRemote(data.db, db);
-    /* Catálogo CAR-SEV: solo si no tenemos cambios locales pendientes de subir */
     if (Array.isArray(data.carsev) && !cloudDirty) saveFiltersSilent(data.carsev);
     migrateDB();
-    saveDB(); /* persiste local; el guard interno evita re-propagar */
+    saveDB();
     renderCurrent();
     setCloudStatus('ok');
   } catch (err) {
@@ -315,7 +300,6 @@ function applyRemote(data) {
   }
 }
 
-/* Todo saveDB() encola una subida (debounce 1200 ms para agrupar ráfagas) */
 function queueCloudSync(delay = 1200) {
   cloudDirty = true;
   if (!cloudReady) return;
@@ -510,7 +494,6 @@ function seedDB() {
 
 let db = null;
 
-/* Normaliza la base: garantiza estructuras y compatibilidad con bases antiguas */
 function migrateDB() {
   if (!Array.isArray(db.sellers)) db.sellers = USERS.map(u => ({ ...u, active: true }));
   db.sellers = db.sellers.map(s => ({ active: true, ...s }));
@@ -527,11 +510,10 @@ function loadDB() {
 }
 function saveDB() {
   localStorage.setItem(DB_KEY, JSON.stringify(db));
-  if (!applyingRemote) queueCloudSync(); /* guarda local + propaga a la nube (debounced) */
+  if (!applyingRemote) queueCloudSync();
 }
 loadDB();
 
-/* prod() lee SIEMPRE db.products (catálogo administrado desde la nube) */
 const prod = code => (db && db.products ? db.products : PRODUCTS).find(p => p.code === code);
 
 /* ---- Lista dinámica de vendedores (fuente única de verdad) ---- */
@@ -596,22 +578,77 @@ function cartTotals() {
   return { subtotal, tax, total: round2(subtotal + tax), saving: round2(atList - subtotal) };
 }
 
-/* ============================ 9. AUTENTICACIÓN ============================ */
+/* ============================ 9. AUTENTICACIÓN (con claves por rol) ============================ */
+/* ¿Sesión de Administración? — gate para todo lo exclusivo de oficina */
+function isAdmin() { return !!(session && session.role === 'admin'); }
+
+/* Valida la sesión vigente contra la lista actual de vendedores (nube incluida).
+   Si Administración da de baja o elimina al vendedor en vivo, la sesión se revoca. */
+function validateSession() {
+  if (!session) return false;
+  if (session.role === 'seller') {
+    const u = sellerById(session.id);
+    if (!u || u.active === false) {
+      sessionStorage.removeItem(SESS_KEY);
+      session = null; cart = [];
+      toast('Tu cuenta de vendedor fue desactivada por Administración.', 'warn');
+      return false;
+    }
+    session.name = u.name; /* mantiene el nombre fresco tras ediciones */
+    sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
+    return true;
+  }
+  if (session.role === 'admin') return true;
+  sessionStorage.removeItem(SESS_KEY); session = null;
+  return false;
+}
+
 function doLogin() {
   const role = $('#login-role').value;
-  const nameInput = ($('#login-name').value || '').trim();
+  const cred = ($('#login-pass').value || '').trim();
+
   if (role === 'admin') {
-    session = { id:'ADMIN', name: nameInput || ADMIN_USER.name, role:'admin' };
+    /* Administrador: contraseña OBLIGATORIA (corrige el acceso sin clave) */
+    if (!cred) { toast('Ingresa la contraseña administrativa.', 'warn'); return; }
+    if (cred !== ADMIN_USER.pass) { toast('Contraseña administrativa incorrecta.', 'bad'); return; }
+    session = { id:'ADMIN', name: ADMIN_USER.name, role:'admin' };
   } else {
+    /* Vendedor: nombre de la lista de activos + PIN personal asignado */
+    const nameSel = ($('#login-name').value || '').trim();
     const list = activeSellers();
-    if (!list.length) { toast('No hay vendedores activos. Solicita a Administración registrar uno (Jornada → Gestión).', 'bad'); return; }
-    const u = list.find(x => x.name.toLowerCase() === nameInput.toLowerCase()) || list[0];
+    if (!list.length) { toast('No hay vendedores activos. Solicita a Administración registrar uno.', 'bad'); return; }
+    if (!nameSel) { toast('Selecciona tu nombre de vendedor.', 'warn'); return; }
+    const u = list.find(x => x.name.toLowerCase() === nameSel.toLowerCase());
+    if (!u) { toast('Vendedor no encontrado entre los activos.', 'bad'); return; }
+    if (!/^\d{4}$/.test(cred) || cred !== String(u.pin)) { toast('Clave (PIN) incorrecta para <b>' + esc(u.name) + '</b>.', 'bad'); return; }
     session = { id: u.id, name: u.name, role:'seller' };
   }
+
   sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
-  ui.view = defaultView();
+  ui.view = defaultView(); /* admin→dash · vendedor→catalog (siempre su interfaz) */
   loadCart();
   initApp();
+}
+
+/* Ajusta el formulario de login según el rol elegido */
+function onLoginRoleChange() {
+  const role = $('#login-role').value;
+  const pick = $('#seller-pick');
+  const hint = $('#seller-hint');
+  const lbl  = $('#pass-lbl');
+  const inp  = $('#login-pass');
+  if (pick) pick.classList.toggle('hidden', role === 'admin');
+  if (hint) hint.classList.toggle('hidden', role === 'admin');
+  if (lbl && inp) {
+    if (role === 'admin') {
+      lbl.textContent = 'Contraseña administrativa *';
+      inp.maxLength = 24; inp.inputMode = 'text'; inp.placeholder = '••••••••••';
+    } else {
+      lbl.textContent = 'Clave de acceso (PIN) *';
+      inp.maxLength = 4; inp.inputMode = 'numeric'; inp.placeholder = '••••';
+    }
+    inp.value = '';
+  }
 }
 
 function logout() {
@@ -625,7 +662,8 @@ function logout() {
 
 function renderLogin() {
   const online = navigator.onLine;
-  const names = activeSellers().map(u => esc(u.name)).join(' · ') || 'Sin vendedores activos registrados';
+  const sellers = activeSellers();
+  const opts = sellers.map(u => `<option value="${esc(u.name)}">${esc(u.name)} — ${esc(u.zone)}</option>`).join('');
   $('#app').innerHTML = `
   <div class="min-h-screen blueprint flex flex-col items-center justify-center p-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow-lg border border-steel-200 overflow-hidden anim-up">
@@ -639,15 +677,21 @@ function renderLogin() {
         <div class="space-y-4">
           <div>
             <label class="lbl">Rol de acceso</label>
-            <select id="login-role" class="input">
-              <option value="seller">Vendedor / Comercial</option>
-              <option value="admin">Administración (Oficina)</option>
+            <select id="login-role" class="input" onchange="onLoginRoleChange()">
+              <option value="seller">Vendedor / Comercial (móvil)</option>
+              <option value="admin">Administración / Oficina</option>
             </select>
           </div>
+          <div id="seller-pick">
+            <label class="lbl" for="login-name">Vendedor</label>
+            ${sellers.length
+              ? `<select id="login-name" class="input">${opts}</select>`
+              : `<select id="login-name" class="input" disabled><option>Sin vendedores activos</option></select>`}
+            <p id="seller-hint" class="text-[10px] text-steel-400 mt-1.5">¿Sin cuenta o sin clave? Solicítala a Administración (Jornada → Gestión de vendedores).</p>
+          </div>
           <div>
-            <label class="lbl">Usuario</label>
-            <input type="text" id="login-name" class="input" placeholder="Tu nombre (ej. Carlos)" maxlength="40">
-            <p class="text-[10px] text-steel-400 mt-1.5">Vendedores activos: ${names}</p>
+            <label class="lbl" id="pass-lbl" for="login-pass">Clave de acceso (PIN) *</label>
+            <input type="password" id="login-pass" class="input font-mono tracking-widest" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
           </div>
           <button onclick="doLogin()" class="btn-navy w-full py-3 rounded-xl font-bold text-sm">
             <i class="fa-solid fa-right-to-bracket"></i> Ingresar al sistema
@@ -693,9 +737,10 @@ const navFor      = () => (session && NAV[session.role]) ? NAV[session.role] : N
 const navIdsFor   = () => navFor().map(n => n.id);
 const defaultView = () => (session && session.role === 'admin') ? 'dash' : 'catalog';
 
-/* Repinta la pantalla activa cuando llega un cambio remoto de la nube */
+/* Repinta la pantalla activa cuando llega un cambio remoto de la nube.
+   Si la sesión quedó inválida (vendedor dado de baja en vivo), vuelve al login. */
 function renderCurrent() {
-  if (session && document.querySelector('[data-nav]')) {
+  if (session && validateSession() && document.querySelector('[data-nav]')) {
     if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
     renderView(); setNav();
     if (ui.view === 'catalog') renderFilterCatalogGrid();
@@ -760,11 +805,11 @@ function setTitle() {
   document.title = (t ? t + ' — ' : '') + 'Truck Filters, c.a.';
 }
 
-/* go() blindado: valida sesión y destino, siempre repinta vista + nav + título */
+/* go() blindado: valida sesión, destino permitido por rol y repinta todo */
 function go(v) {
   if (!session) { renderLogin(); return; }
   const ids = navIdsFor();
-  ui.view = ids.includes(v) ? v : defaultView();
+  ui.view = ids.includes(v) ? v : defaultView(); /* un vendedor jamás navega a vistas admin */
   closeModal(); renderView(); setNav(); setTitle();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -863,7 +908,8 @@ function viewCatalog() {
   </div>`;
 }
 
-/* ============================ CATÁLOGO VISUAL CAR-SEV (con fotos) ============================ */
+/* ============================ CATÁLOGO VISUAL (con fotos) ============================ */
+/* La REJILLA es de consulta para todos; el PANEL de gestión es EXCLUSIVO de Administración. */
 function viewFiltersCatalog() {
   return `
   <section id="sev-section" class="space-y-4">
@@ -886,57 +932,65 @@ function viewFiltersCatalog() {
 
     <div id="filterCatalogGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
 
-    <details id="filterFormDetails" class="card group">
-      <summary class="flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
-        <span class="flex items-center gap-2">
-          <i class="fa-solid fa-screwdriver-wrench text-acc-dark"></i>
-          <span class="sec-title">Gestión de filtros CAR-SEV</span>
-        </span>
-        <i class="fa-solid fa-chevron-down text-steel-400 transition-transform group-open:rotate-180"></i>
-      </summary>
-      <p class="text-xs text-steel-500 mt-3 mb-4">Registra referencias con su fotografía — sube un archivo o indica la ruta <span class="font-mono">assets/img/filters/</span> — junto a su aplicación y dimensiones clave. Los cambios se sincronizan en la nube para todos los equipos.</p>
-      <form id="filterAdminForm" onsubmit="handleSaveFilter(event)" class="space-y-4">
-        <input type="hidden" id="editIndex" value="">
-        <div class="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label class="lbl" for="inputCodigo">Código del filtro *</label>
-            <input type="text" id="inputCodigo" required class="input font-mono" placeholder="Ej: TF-2810" maxlength="20">
-          </div>
-          <div>
-            <label class="lbl" for="inputAplicacion">Aplicación comercial *</label>
-            <input type="text" id="inputAplicacion" required class="input" placeholder="Ej: Mack / Iveco" maxlength="80">
-          </div>
-        </div>
-        <div class="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label class="lbl" for="inputDimensiones">Dimensiones clave *</label>
-            <input type="text" id="inputDimensiones" required class="input" placeholder="Ej: Alt: 155mm | Diám: 95mm" maxlength="80">
-          </div>
-          <div>
-            <label class="lbl" for="inputImagen">Ruta de imagen (opcional)</label>
-            <input type="text" id="inputImagen" class="input font-mono" placeholder="tf-2810.jpg" maxlength="120">
-          </div>
+    ${isAdmin() ? viewFiltersAdminPanel() : ''}
+  </section>`;
+}
+
+/* EXCLUSIVO Administración / Oficina. En el perfil Vendedor este bloque
+   NUNCA se renderiza (ni formulario, ni subida de fotos, ni borrado). */
+function viewFiltersAdminPanel() {
+  return `
+  <details id="filterFormDetails" class="card group">
+    <summary class="flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+      <span class="flex items-center gap-2">
+        <i class="fa-solid fa-screwdriver-wrench text-acc-dark"></i>
+        <span class="sec-title">Gestión de filtros TRUCK FILTERS</span>
+        <span class="chip bg-acc-soft text-acc-dark border border-acc/40 ml-1">Solo Oficina</span>
+      </span>
+      <i class="fa-solid fa-chevron-down text-steel-400 transition-transform group-open:rotate-180"></i>
+    </summary>
+    <p class="text-xs text-steel-500 mt-3 mb-4">Registra referencias con su fotografía — sube un archivo o indica la ruta <span class="font-mono">assets/img/filters/</span> — junto a su aplicación y dimensiones clave. Los cambios se sincronizan en la nube para todos los equipos.</p>
+    <form id="filterAdminForm" onsubmit="handleSaveFilter(event)" class="space-y-4">
+      <input type="hidden" id="editIndex" value="">
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="lbl" for="inputCodigo">Código del filtro *</label>
+          <input type="text" id="inputCodigo" required class="input font-mono" placeholder="Ej: TF-2810" maxlength="20">
         </div>
         <div>
-          <label class="lbl">Fotografía del filtro (opcional)</label>
-          <div class="flex items-center gap-3">
-            <img id="imgPreview" src="${FILTER_IMG_FALLBACK}" alt="Vista previa de la fotografía" class="w-20 h-20 rounded-xl object-cover border border-steel-200 bg-steel-50 shrink-0">
-            <div class="flex-1 space-y-2">
-              <label class="btn-line px-4 py-2 text-xs rounded-xl cursor-pointer">
-                <i class="fa-solid fa-camera"></i> Subir foto desde el equipo
-                <input type="file" accept="image/*" class="hidden" onchange="handleFilterPhoto(this)">
-              </label>
-              <p class="text-[10px] text-steel-400">JPG o PNG. Se optimiza automáticamente (máx. 800px) y viaja con la ficha a la nube.</p>
-            </div>
+          <label class="lbl" for="inputAplicacion">Aplicación comercial *</label>
+          <input type="text" id="inputAplicacion" required class="input" placeholder="Ej: Mack / Iveco" maxlength="80">
+        </div>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="lbl" for="inputDimensiones">Dimensiones clave *</label>
+          <input type="text" id="inputDimensiones" required class="input" placeholder="Ej: Alt: 155mm | Diám: 95mm" maxlength="80">
+        </div>
+        <div>
+          <label class="lbl" for="inputImagen">Ruta de imagen (opcional)</label>
+          <input type="text" id="inputImagen" class="input font-mono" placeholder="tf-2810.jpg" maxlength="120">
+        </div>
+      </div>
+      <div>
+        <label class="lbl">Fotografía del filtro (opcional)</label>
+        <div class="flex items-center gap-3">
+          <img id="imgPreview" src="${FILTER_IMG_FALLBACK}" alt="Vista previa de la fotografía" class="w-20 h-20 rounded-xl object-cover border border-steel-200 bg-steel-50 shrink-0">
+          <div class="flex-1 space-y-2">
+            <label class="btn-line px-4 py-2 text-xs rounded-xl cursor-pointer">
+              <i class="fa-solid fa-camera"></i> Subir foto desde el equipo
+              <input type="file" accept="image/*" class="hidden" onchange="handleFilterPhoto(this)">
+            </label>
+            <p class="text-[10px] text-steel-400">JPG o PNG. Se optimiza automáticamente (máx. 800px) y viaja con la ficha a la nube.</p>
           </div>
         </div>
-        <div class="flex justify-end gap-3 pt-1">
-          <button type="button" onclick="resetAdminForm()" class="btn-line px-4 py-2 text-xs rounded-xl">Cancelar</button>
-          <button type="submit" id="filterSaveBtn" class="btn-navy px-5 py-2 text-xs rounded-xl"><i class="fa-solid fa-floppy-disk"></i> Guardar filtro</button>
-        </div>
-      </form>
-    </details>
-  </section>`;
+      </div>
+      <div class="flex justify-end gap-3 pt-1">
+        <button type="button" onclick="resetAdminForm()" class="btn-line px-4 py-2 text-xs rounded-xl">Cancelar</button>
+        <button type="submit" id="filterSaveBtn" class="btn-navy px-5 py-2 text-xs rounded-xl"><i class="fa-solid fa-floppy-disk"></i> Guardar filtro</button>
+      </div>
+    </form>
+  </details>`;
 }
 
 /* ============================ 12. HERRAMIENTAS ============================ */
@@ -1152,7 +1206,7 @@ function viewHistory() {
   </div>`;
 }
 
-/* ============================ 14. VISTAS — OFICINA (ADMIN) ============================ */
+/* ============================ 14. VISTAS — OFICINA (SOLO ADMIN) ============================ */
 const kpiCard = (ic, label, value, cls) => `
   <div class="card flex items-center gap-3">
     <div class="w-11 h-11 rounded-xl ${cls} flex items-center justify-center shrink-0"><i class="fa-solid ${ic}"></i></div>
@@ -1299,7 +1353,7 @@ function crewBodyHTML() {
       </span>
       <i class="fa-solid fa-chevron-down text-steel-400 transition-transform group-open:rotate-180"></i>
     </summary>
-    <p class="text-xs text-steel-500 mt-3 mb-4">Agrega, edita o da de baja al equipo comercial. Los cambios se guardan al instante, se sincronizan con la nube y aplican al login de los teléfonos.</p>
+    <p class="text-xs text-steel-500 mt-3 mb-4">Agrega, edita o da de baja al equipo comercial. Cada vendedor usa su PIN como clave de acceso. Los cambios se sincronizan con la nube y aplican al login de los teléfonos.</p>
 
     <form id="sellerForm" onsubmit="saveSellerForm(event)" class="space-y-4 pb-5 mb-5 border-b border-steel-100">
       <input type="hidden" id="s-editId" value="">
@@ -1423,7 +1477,7 @@ function submitOrder() {
     rejectReason: ''
   });
   logActivity('fa-file-invoice', `Pedido ${number} generado por ${session.name}`);
-  cart = []; saveCart(); saveDB(); /* saveDB propaga el pedido a la nube */
+  cart = []; saveCart(); saveDB();
   toast(`Pedido <b>${number}</b> enviado a oficina.`, 'ok');
   go('history');
 }
@@ -1485,6 +1539,7 @@ function openOrderDetail(id) {
 }
 
 function setOrderStatus(id, st) {
+  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
   const o = db.orders.find(x => x.id === id); if (!o) return;
   const doIt = () => {
     if (st === 'despachado') {
@@ -1506,6 +1561,7 @@ function setOrderStatus(id, st) {
 }
 
 function toggleJornada(id) {
+  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
   const u = sellerById(id); if (!u) return;
   const j = db.jornada[id];
   if (j && !j.end) {
@@ -1521,12 +1577,14 @@ function toggleJornada(id) {
 }
 
 function adjustStock(code, delta) {
+  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
   const p = prod(code); if (!p) return;
   p.stock = Math.max(0, p.stock + delta);
   saveDB(); renderInventoryList();
 }
 
 function exportDB() {
+  if (!isAdmin()) return;
   const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1537,6 +1595,7 @@ function exportDB() {
 }
 
 function importDB(input) {
+  if (!isAdmin()) return;
   const f = input.files && input.files[0]; if (!f) return;
   const r = new FileReader();
   r.onload = () => {
@@ -1546,7 +1605,7 @@ function importDB(input) {
       db = d;
       migrateDB();
       saveDB();
-      queueCloudSync(0); /* propaga el estado importado a la nube de inmediato */
+      queueCloudSync(0);
       renderView(); setNav();
       toast('Respaldo importado y sincronizado.', 'ok');
     } catch(e) {
@@ -1559,15 +1618,17 @@ function importDB(input) {
 }
 
 function resetDB() {
+  if (!isAdmin()) return;
   confirmDialog('Reiniciar datos', 'Se restaurará la base de datos de fábrica en este equipo Y en la nube. Los cambios actuales se perderán.', 'Reiniciar', () => {
     db = seedDB(); saveDB(); queueCloudSync(0); renderView(); setNav();
     toast('Datos restaurados y sincronizados.', 'ok');
   }, true);
 }
 
-/* ============================ 16. CRUD DE VENDEDORES (dinámico + nube) ============================ */
+/* ============================ 16. CRUD DE VENDEDORES (solo admin + nube) ============================ */
 function saveSellerForm(e) {
   e.preventDefault();
+  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
   const name  = ($('#s-name').value  || '').trim();
   const id    = ($('#s-id').value    || '').trim();
   const zone  = ($('#s-zone').value  || '').trim();
@@ -1595,7 +1656,7 @@ function saveSellerForm(e) {
     getSellers().push({ id, name, zone, pin, active: true });
     logActivity('fa-user-plus', `Vendedor registrado: ${name} (${id}) — zona ${zone}`);
     saveDB(); resetSellerForm(); renderCrew();
-    toast(`<b>${esc(name)}</b> registrado. Ya puede iniciar sesión desde cualquier teléfono.`, 'ok');
+    toast(`<b>${esc(name)}</b> registrado. Ya puede iniciar sesión con su PIN desde cualquier teléfono.`, 'ok');
   }
 }
 
@@ -1607,6 +1668,7 @@ function resetSellerForm() {
 }
 
 function editSeller(i) {
+  if (!isAdmin()) return;
   const s = getSellers()[i]; if (!s) return;
   const d = document.getElementById('sellerMgmt'); if (d) d.open = true;
   $('#s-editId').value = s.id;
@@ -1621,6 +1683,7 @@ function editSeller(i) {
 }
 
 function toggleSellerActive(i) {
+  if (!isAdmin()) return;
   const s = getSellers()[i]; if (!s) return;
   const on = s.active !== false;
   const doIt = () => {
@@ -1637,6 +1700,7 @@ function toggleSellerActive(i) {
 }
 
 function deleteSeller(i) {
+  if (!isAdmin()) return;
   const s = getSellers()[i]; if (!s) return;
   if (db.orders.some(o => o.sellerId === s.id)) {
     toast('<b>' + esc(s.name) + '</b> tiene pedidos asociados. Usa "Dar de baja" para conservar el historial.', 'warn');
@@ -1776,11 +1840,11 @@ function viewBackup() {
   </div>`;
 }
 
-/* ============================ 18. GESTIÓN CATÁLOGO VISUAL CAR-SEV ============================ */
+/* ============================ 18. GESTIÓN CATÁLOGO VISUAL (CRUD solo admin) ============================ */
 const STORAGE_KEY = 'carsev_filters_catalog_v1';
 const defaultFilters = [];
 
-let pendingFilterPhoto = null; /* dataURL de la foto subida, pendiente por guardar */
+let pendingFilterPhoto = null;
 
 function saveFilters(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); if (!applyingRemote) queueCloudSync(); }
 function saveFiltersSilent(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
@@ -1793,7 +1857,6 @@ function getFilters() {
   return [...defaultFilters];
 }
 
-/* Resuelve la fuente de imagen: foto subida (dataURL) → ruta → plano de reemplazo */
 function filterImgSrc(f) {
   if (f && f.img) return f.img;
   if (f && f.imagen) return 'assets/img/filters/' + f.imagen;
@@ -1803,6 +1866,7 @@ function filterImgSrc(f) {
 function renderFilterCatalogGrid() {
   const grid = document.getElementById('filterCatalogGrid');
   if (!grid) return;
+  const admin = isAdmin(); /* los botones de edición solo existen para Administración */
   const all = getFilters().map((f, i) => ({ ...f, __i: i }));
   const q = (ui.filterQ || '').toLowerCase().trim();
   const list = all.filter(f => !q ||
@@ -1822,7 +1886,7 @@ function renderFilterCatalogGrid() {
   if (!list.length) {
     grid.innerHTML = `<div class="card col-span-full text-center py-10 space-y-2">
       <i class="fa-solid fa-images text-3xl text-steel-300"></i>
-      <p class="text-sm text-steel-500">${q ? 'Sin resultados para "<b>' + esc(ui.filterQ) + '</b>".' : 'Aún no hay filtros registrados. Agrega el primero desde la gestión inferior.'}</p>
+      <p class="text-sm text-steel-500">${q ? 'Sin resultados para "<b>' + esc(ui.filterQ) + '</b>".' : 'Aún no hay filtros registrados.' + (admin ? ' Agrega el primero desde la gestión inferior.' : '')}</p>
     </div>`;
     return;
   }
@@ -1843,8 +1907,9 @@ function renderFilterCatalogGrid() {
         </div>
         <div class="flex gap-2 pt-2 border-t border-steel-100">
           <button onclick="openFilterPhoto(${f.__i})" class="btn-line px-3 py-1.5 text-xs rounded-lg flex-1"><i class="fa-solid fa-expand"></i> Ver ficha</button>
+          ${admin ? `
           <button onclick="editFilter(${f.__i})" class="btn-line px-3 py-1.5 text-xs rounded-lg" aria-label="Editar ${esc(f.codigo)}"><i class="fa-solid fa-pen text-xs"></i></button>
-          <button onclick="deleteFilter(${f.__i})" class="btn-bad px-3 py-1.5 text-xs rounded-lg" aria-label="Eliminar ${esc(f.codigo)}"><i class="fa-solid fa-trash text-xs"></i></button>
+          <button onclick="deleteFilter(${f.__i})" class="btn-bad px-3 py-1.5 text-xs rounded-lg" aria-label="Eliminar ${esc(f.codigo)}"><i class="fa-solid fa-trash text-xs"></i></button>` : ''}
         </div>
       </div>
     </article>`).join('');
@@ -1877,13 +1942,14 @@ function openFilterPhoto(i) {
       </div>
       <p class="text-[10px] text-steel-400 font-mono text-center">${f.img ? 'Fotografía cargada al equipo (viaja con la ficha)' : 'assets/img/filters/' + esc(f.imagen || '—')}</p>
       <div class="flex gap-2">
-        <button onclick="closeModal();editFilter(${f.__i})" class="btn-line px-4 py-2 text-xs rounded-xl flex-1"><i class="fa-solid fa-pen"></i> Editar ficha</button>
+        ${isAdmin() ? `<button onclick="closeModal();editFilter(${f.__i})" class="btn-line px-4 py-2 text-xs rounded-xl flex-1"><i class="fa-solid fa-pen"></i> Editar ficha</button>` : ''}
         <button onclick="closeModal()" class="btn-navy px-4 py-2 text-xs rounded-xl flex-1">Cerrar</button>
       </div>
     </div>`);
 }
 
 function handleFilterPhoto(input) {
+  if (!isAdmin()) return; /* exclusivo de Administración */
   const file = input.files && input.files[0];
   if (!file) return;
   if (!/^image\//.test(file.type)) { toast('Selecciona un archivo de imagen (JPG o PNG).', 'warn'); input.value = ''; return; }
@@ -1910,6 +1976,7 @@ function handleFilterPhoto(input) {
 
 function handleSaveFilter(e) {
   e.preventDefault();
+  if (!isAdmin()) { toast('Gestión de filtros exclusiva de Administración.', 'bad'); return; }
   const f = {
     codigo:      ($('#inputCodigo').value      || '').trim().toUpperCase(),
     aplicacion:  ($('#inputAplicacion').value  || '').trim(),
@@ -1922,7 +1989,7 @@ function handleSaveFilter(e) {
   const editing = idxRaw !== '' && list[+idxRaw];
   f.img = pendingFilterPhoto || (editing ? list[+idxRaw].img || null : null);
   if (editing) list[+idxRaw] = f; else list.push(f);
-  saveFilters(list); /* saveFilters propaga a la nube */
+  saveFilters(list);
   resetAdminForm();
   renderFilterCatalogGrid();
   toast(editing ? `Ficha <b>${esc(f.codigo)}</b> actualizada y sincronizada.` : `Filtro <b>${esc(f.codigo)}</b> agregado y visible para todos los vendedores.`, 'ok');
@@ -1937,6 +2004,7 @@ function resetAdminForm() {
 }
 
 function editFilter(i) {
+  if (!isAdmin()) { toast('Gestión de filtros exclusiva de Administración.', 'bad'); return; }
   const f = getFilters()[i]; if (!f) return;
   const d = document.getElementById('filterFormDetails'); if (d) d.open = true;
   $('#editIndex').value = String(i);
@@ -1953,6 +2021,7 @@ function editFilter(i) {
 }
 
 function deleteFilter(i) {
+  if (!isAdmin()) { toast('Gestión de filtros exclusiva de Administración.', 'bad'); return; }
   const list = getFilters(); const f = list[i]; if (!f) return;
   confirmDialog('Eliminar filtro', `¿Eliminar <b>${esc(f.codigo)}</b> (${esc(f.aplicacion)}) del catálogo visual? Se quitará también de los teléfonos.`, 'Eliminar', () => {
     list.splice(i, 1); saveFilters(list); renderFilterCatalogGrid();
@@ -1960,10 +2029,14 @@ function deleteFilter(i) {
   }, true);
 }
 
-/* ============================ 19. MOTOR DE RENDERIZADO ============================ */
+/* ============================ 19. MOTOR DE RENDERIZADO (filtrado por rol) ============================ */
 function renderView() {
   const v = $('#view');
   if (!v) return;
+  /* Filtrado estricto: si la vista no pertenece al NAV del rol actual,
+     se sustituye por la vista inicial. Un vendedor JAMÁS renderiza 'dash',
+     'orders', 'crew', 'inventory' ni 'backup'. */
+  if (session && !navIdsFor().includes(ui.view)) ui.view = defaultView();
   let html = '';
   try {
     switch (ui.view) {
@@ -2003,8 +2076,8 @@ function renderView() {
 
 /* ============================ 20. ARRANQUE ============================ */
 function initApp() {
-  cloudInit(); /* conecta Firestore y activa la escucha en tiempo real */
-  if (!session) { renderLogin(); return; }
+  cloudInit(); /* Firestore + tiempo real + caché offline (PWA intacta) */
+  if (!session || !validateSession()) { renderLogin(); return; }
   loadCart();
   if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
   renderShell();
@@ -2012,30 +2085,8 @@ function initApp() {
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
-
-/* Al recuperar señal: re-consulta la nube y sube cambios pendientes */
-window.addEventListener('online', () => { updateConnChip(); if (cloudReady) { cloudSync(); } });
-</script>
-
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyAT6BqMZttmKTXHg0VF4UN-K7V-7QaafeY",
-    authDomain: "truck-filters.firebaseapp.com",
-    projectId: "truck-filters",
-    storageBucket: "truck-filters.firebasestorage.app",
-    messagingSenderId: "45278506796",
-    appId: "1:45278506796:web:89a0b69c15e71872930689",
-    measurementId: "G-ZTS5THYRYK"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  
-  window.db = db;
-  console.log("¡Firebase y Firestore inicializados con éxito!");
+window.addEventListener('online',  () => { updateConnChip(); if (cloudReady) { cloudPull(); if (cloudDirty) queueCloudSync(500); } });
+window.addEventListener('offline', updateConnChip);
 </script>
 </body>
 </html>
