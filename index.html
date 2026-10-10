@@ -583,7 +583,7 @@ function cartTotals() {
 function isAdmin() { return !!(session && session.role === 'admin'); }
 
 /* Valida la sesión vigente contra la lista actual de vendedores (nube incluida).
-   Si Administración da de baja o elimina al vendedor en vivo, la sesión se revoca. */
+   Si Administración da de baja o ELIMINA al vendedor en vivo, la sesión se revoca. */
 function validateSession() {
   if (!session) return false;
   if (session.role === 'seller') {
@@ -591,10 +591,10 @@ function validateSession() {
     if (!u || u.active === false) {
       sessionStorage.removeItem(SESS_KEY);
       session = null; cart = [];
-      toast('Tu cuenta de vendedor fue desactivada por Administración.', 'warn');
+      toast('Tu cuenta de vendedor fue eliminada o desactivada por Administración.', 'warn');
       return false;
     }
-    session.name = u.name; /* mantiene el nombre fresco tras ediciones */
+    session.name = u.name;
     sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
     return true;
   }
@@ -738,7 +738,7 @@ const navIdsFor   = () => navFor().map(n => n.id);
 const defaultView = () => (session && session.role === 'admin') ? 'dash' : 'catalog';
 
 /* Repinta la pantalla activa cuando llega un cambio remoto de la nube.
-   Si la sesión quedó inválida (vendedor dado de baja en vivo), vuelve al login. */
+   Si la sesión quedó inválida (vendedor eliminado/dado de baja en vivo), vuelve al login. */
 function renderCurrent() {
   if (session && validateSession() && document.querySelector('[data-nav]')) {
     if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
@@ -1327,7 +1327,7 @@ function viewOrders() {
   </div>`;
 }
 
-/* ============================ JORNADA + GESTIÓN DINÁMICA DE VENDEDORES ============================ */
+/* ============================ JORNADA + GESTIÓN DINÁMICA DE VENDEDORES (SOLO ADMIN) ============================ */
 function viewCrew() {
   return `
   <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
@@ -1344,16 +1344,17 @@ function crewBodyHTML() {
   const active  = sellers.filter(s => s.active !== false);
   const today   = db.orders.filter(o => o.ts >= t0());
   return `
-  <details id="sellerMgmt" class="card group mb-5">
+  <details id="sellerMgmt" class="card group mb-5" open>
     <summary class="flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
       <span class="flex items-center gap-2">
         <i class="fa-solid fa-users-gear text-acc-dark"></i>
         <span class="sec-title">Gestión de vendedores</span>
         <span class="chip bg-navy-50 text-navy-700 border border-navy-100 ml-1">${active.length} activo(s) · ${sellers.length - active.length} de baja</span>
+        <span class="chip bg-acc-soft text-acc-dark border border-acc/40">Solo Oficina</span>
       </span>
       <i class="fa-solid fa-chevron-down text-steel-400 transition-transform group-open:rotate-180"></i>
     </summary>
-    <p class="text-xs text-steel-500 mt-3 mb-4">Agrega, edita o da de baja al equipo comercial. Cada vendedor usa su PIN como clave de acceso. Los cambios se sincronizan con la nube y aplican al login de los teléfonos.</p>
+    <p class="text-xs text-steel-500 mt-3 mb-4">Lista completa de vendedores registrados en la base de datos (sincronizada con Firebase). Usa la <i class="fa-solid fa-trash text-red-500"></i> para eliminar definitivamente: el registro se borra de la nube y desaparece de todos los teléfonos en tiempo real.</p>
 
     <form id="sellerForm" onsubmit="saveSellerForm(event)" class="space-y-4 pb-5 mb-5 border-b border-steel-100">
       <input type="hidden" id="s-editId" value="">
@@ -1395,9 +1396,10 @@ function crewBodyHTML() {
   </div>`;
 }
 
+/* Fila de cada vendedor: nombre + PIN a la izquierda, acciones a la derecha.
+   La PAPELERA aparece SIEMPRE junto a cada vendedor (exclusivo del panel admin). */
 function sellerRowHTML(s, i) {
   const on = s.active !== false;
-  const canDelete = !db.orders.some(o => o.sellerId === s.id);
   return `
   <div class="flex items-center gap-3 py-2.5 border-b border-steel-100 last:border-0">
     <div class="w-9 h-9 rounded-full ${on ? 'bg-navy-900 text-acc' : 'bg-steel-200 text-steel-500'} font-disp font-bold text-xs flex items-center justify-center shrink-0">${initialsOf(s.name)}</div>
@@ -1411,7 +1413,9 @@ function sellerRowHTML(s, i) {
     <div class="flex items-center gap-1 shrink-0">
       <button onclick="editSeller(${i})" class="btn-line w-8 h-8 rounded-lg" title="Editar" aria-label="Editar ${esc(s.name)}"><i class="fa-solid fa-pen text-[10px]"></i></button>
       <button onclick="toggleSellerActive(${i})" class="btn-line w-8 h-8 rounded-lg" title="${on ? 'Dar de baja' : 'Reactivar'}" aria-label="${on ? 'Dar de baja' : 'Reactivar'} ${esc(s.name)}"><i class="fa-solid ${on ? 'fa-user-slash' : 'fa-user-check'} text-[10px]"></i></button>
-      ${canDelete ? `<button onclick="deleteSeller(${i})" class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Eliminar definitivamente" aria-label="Eliminar ${esc(s.name)}"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}
+      <button onclick="deleteSeller(${i})" class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Eliminar definitivamente de la base de datos" aria-label="Eliminar ${esc(s.name)}">
+        <i class="fa-solid fa-trash text-[10px]"></i>
+      </button>
     </div>
   </div>`;
 }
@@ -1625,7 +1629,7 @@ function resetDB() {
   }, true);
 }
 
-/* ============================ 16. CRUD DE VENDEDORES (solo admin + nube) ============================ */
+/* ============================ 16. CRUD DE VENDEDORES (solo admin + Firestore en vivo) ============================ */
 function saveSellerForm(e) {
   e.preventDefault();
   if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
@@ -1650,12 +1654,12 @@ function saveSellerForm(e) {
     if (editId !== id && db.jornada[editId]) { db.jornada[id] = db.jornada[editId]; delete db.jornada[editId]; }
     s.name = name; s.id = id; s.zone = zone; s.pin = pin;
     logActivity('fa-user-pen', `Vendedor actualizado: ${name} (${id})`);
-    saveDB(); resetSellerForm(); renderCrew();
+    saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew();
     toast(`Ficha de <b>${esc(name)}</b> actualizada y sincronizada.`, 'ok');
   } else {
     getSellers().push({ id, name, zone, pin, active: true });
     logActivity('fa-user-plus', `Vendedor registrado: ${name} (${id}) — zona ${zone}`);
-    saveDB(); resetSellerForm(); renderCrew();
+    saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew();
     toast(`<b>${esc(name)}</b> registrado. Ya puede iniciar sesión con su PIN desde cualquier teléfono.`, 'ok');
   }
 }
@@ -1668,7 +1672,7 @@ function resetSellerForm() {
 }
 
 function editSeller(i) {
-  if (!isAdmin()) return;
+  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
   const s = getSellers()[i]; if (!s) return;
   const d = document.getElementById('sellerMgmt'); if (d) d.open = true;
   $('#s-editId').value = s.id;
@@ -1683,14 +1687,14 @@ function editSeller(i) {
 }
 
 function toggleSellerActive(i) {
-  if (!isAdmin()) return;
+  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
   const s = getSellers()[i]; if (!s) return;
   const on = s.active !== false;
   const doIt = () => {
     s.active = !on;
     if (on && db.jornada[s.id] && !db.jornada[s.id].end) db.jornada[s.id].end = Date.now();
     logActivity(on ? 'fa-user-slash' : 'fa-user-check', on ? `Vendedor dado de baja: ${s.name}` : `Vendedor reactivado: ${s.name}`);
-    saveDB(); renderCrew();
+    saveDB(); queueCloudSync(0); renderCrew();
     toast(on ? `<b>${esc(s.name)}</b> dado de baja y sincronizado.` : `<b>${esc(s.name)}</b> reactivado.`, on ? 'warn' : 'ok');
   };
   confirmDialog(on ? 'Dar de baja' : 'Reactivar vendedor',
@@ -1699,19 +1703,25 @@ function toggleSellerActive(i) {
     on ? 'Dar de baja' : 'Reactivar', doIt, on);
 }
 
+/* PAPELERA: elimina el registro del vendedor de db.sellers y lo propaga a
+   Firebase Firestore DE INMEDIATO (queueCloudSync(0)). El onSnapshot de los
+   demás equipos aplica el cambio en tiempo real y, si ese vendedor tenía
+   sesión abierta en su teléfono, validateSession() la revoca al instante. */
 function deleteSeller(i) {
-  if (!isAdmin()) return;
+  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
   const s = getSellers()[i]; if (!s) return;
-  if (db.orders.some(o => o.sellerId === s.id)) {
-    toast('<b>' + esc(s.name) + '</b> tiene pedidos asociados. Usa "Dar de baja" para conservar el historial.', 'warn');
-    return;
-  }
-  confirmDialog('Eliminar vendedor', `¿Eliminar definitivamente a <b>${esc(s.name)}</b> (${esc(s.id)})? Esta acción no se puede deshacer.`, 'Eliminar', () => {
+  const nOrders = db.orders.filter(o => o.sellerId === s.id).length;
+  const msg = nOrders
+    ? `Se eliminará a <b>${esc(s.name)}</b> (${esc(s.id)}) de la base de datos. Tiene <b>${nOrders}</b> pedido(s) asociados: su nombre quedará impreso en ellos, pero la cuenta y su acceso se borrarán por completo de todos los dispositivos.`
+    : `¿Eliminar definitivamente a <b>${esc(s.name)}</b> (${esc(s.id)})? La cuenta se borrará de la nube y desaparecerá de todos los teléfonos en tiempo real. Esta acción no se puede deshacer.`;
+  confirmDialog('Eliminar vendedor', msg, 'Eliminar', () => {
     getSellers().splice(i, 1);
     delete db.jornada[s.id];
     logActivity('fa-user-minus', `Vendedor eliminado: ${s.name} (${s.id})`);
-    saveDB(); resetSellerForm(); renderCrew();
-    toast('Vendedor eliminado del sistema.', 'warn');
+    saveDB();
+    queueCloudSync(0);            /* sube el cambio a Firestore al instante */
+    resetSellerForm(); renderCrew(); /* actualiza la lista de la interfaz YA */
+    toast(`Vendedor <b>${esc(s.name)}</b> eliminado y sincronizado en la nube.`, 'warn');
   }, true);
 }
 
@@ -2035,7 +2045,7 @@ function renderView() {
   if (!v) return;
   /* Filtrado estricto: si la vista no pertenece al NAV del rol actual,
      se sustituye por la vista inicial. Un vendedor JAMÁS renderiza 'dash',
-     'orders', 'crew', 'inventory' ni 'backup'. */
+     'orders', 'crew' (donde vive la Gestión de vendedores), 'inventory' ni 'backup'. */
   if (session && !navIdsFor().includes(ui.view)) ui.view = defaultView();
   let html = '';
   try {
