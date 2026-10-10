@@ -1742,81 +1742,6 @@ function purgeSellerById(id) {
   return removed;
 }
 
-/* ==================== PURGA COMPLETA DE UN VENDEDOR ====================
-   Borra de db (y propaga a Firestore con queueCloudSync(0)):
-   1) El registro del vendedor en db.sellers.
-   2) Su jornada/asistencia en db.jornada (inicio, fin, registro de hoy).
-   3) TODOS sus pedidos creados HOY (ts >= inicio del día).
-   Los pedidos de días anteriores se conservan como historial. */
-function purgeSellerById(id) {
-  const s = sellerById(id);
-  const name = s ? s.name : id;
-  const idx = getSellers().findIndex(x => x.id === id);
-  if (idx >= 0) getSellers().splice(idx, 1);
-  delete db.jornada[id]; /* jornada + asistencia del día */
-
-  const before = db.orders.length;
-  db.orders = db.orders.filter(o => !(o.sellerId === id && o.ts >= t0()));
-  const removed = before - db.orders.length;
-
-  logActivity('fa-user-minus', `Vendedor eliminado: ${name} — jornada y ${removed} pedido(s) de hoy borrados`);
-  saveDB();
-  queueCloudSync(0);   /* Firestore al instante → onSnapshot actualiza los demás teléfonos */
-  resetSellerForm();
-  renderCrew();        /* la tarjeta desaparece de la pantalla YA */
-  return removed;
-}
-
-/* ==================== PURGA COMPLETA DE UN VENDEDOR ====================
-   Borra de db (y propaga a Firestore con queueCloudSync(0)):
-   1) El registro del vendedor en db.sellers.
-   2) Su jornada/asistencia en db.jornada (inicio, fin, registro de hoy).
-   3) TODOS sus pedidos creados HOY (ts >= inicio del día).
-   Los pedidos de días anteriores se conservan como historial. */
-function purgeSellerById(id) {
-  const s = sellerById(id);
-  const name = s ? s.name : id;
-  const idx = getSellers().findIndex(x => x.id === id);
-  if (idx >= 0) getSellers().splice(idx, 1);
-  delete db.jornada[id]; /* jornada + asistencia del día */
-
-  const before = db.orders.length;
-  db.orders = db.orders.filter(o => !(o.sellerId === id && o.ts >= t0()));
-  const removed = before - db.orders.length;
-
-  logActivity('fa-user-minus', `Vendedor eliminado: ${name} — jornada y ${removed} pedido(s) de hoy borrados`);
-  saveDB();
-  queueCloudSync(0);   /* Firestore al instante → onSnapshot actualiza los demás teléfonos */
-  resetSellerForm();
-  renderCrew();        /* la tarjeta desaparece de la pantalla YA */
-  return removed;
-}
-
-/* ==================== PURGA COMPLETA DE UN VENDEDOR ====================
-   Borra de db (y propaga a Firestore con queueCloudSync(0)):
-   1) El registro del vendedor en db.sellers.
-   2) Su jornada/asistencia en db.jornada (inicio, fin, registro de hoy).
-   3) TODOS sus pedidos creados HOY (ts >= inicio del día).
-   Los pedidos de días anteriores se conservan como historial. */
-function purgeSellerById(id) {
-  const s = sellerById(id);
-  const name = s ? s.name : id;
-  const idx = getSellers().findIndex(x => x.id === id);
-  if (idx >= 0) getSellers().splice(idx, 1);
-  delete db.jornada[id]; /* jornada + asistencia del día */
-
-  const before = db.orders.length;
-  db.orders = db.orders.filter(o => !(o.sellerId === id && o.ts >= t0()));
-  const removed = before - db.orders.length;
-
-  logActivity('fa-user-minus', `Vendedor eliminado: ${name} — jornada y ${removed} pedido(s) de hoy borrados`);
-  saveDB();
-  queueCloudSync(0);   /* Firestore al instante → onSnapshot actualiza los demás teléfonos */
-  resetSellerForm();
-  renderCrew();        /* la tarjeta desaparece de la pantalla YA */
-  return removed;
-}
-
 /* Cestica de la TARJETA de jornada (arriba a la derecha) */
 function deleteCrewCard(id) {
   if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
@@ -1828,83 +1753,6 @@ function deleteCrewCard(id) {
     const removed = purgeSellerById(id);
     toast(`<b>${esc(name)}</b> eliminado${removed ? ` · ${removed} pedido(s) de hoy borrados` : ''}. Tarjeta de jornada actualizada.`, 'warn');
   }, true);
-}
-
-/* ==================== PURGA COMPLETA DE UN VENDEDOR ====================
-   Borra de db (y propaga a Firestore con queueCloudSync(0)):
-   1) El registro del vendedor en db.sellers.
-   2) Su jornada/asistencia en db.jornada (inicio, fin, registro de hoy).
-   3) TODOS sus pedidos creados HOY (ts >= inicio del día).
-   Los pedidos de días anteriores se conservan como historial. */
-function purgeSellerById(id) {
-  const s = sellerById(id);
-  const name = s ? s.name : id;
-  const idx = getSellers().findIndex(x => x.id === id);
-  if (idx >= 0) getSellers().splice(idx, 1);
-  delete db.jornada[id]; /* jornada + asistencia del día */
-
-  const before = db.orders.length;
-  db.orders = db.orders.filter(o => !(o.sellerId === id && o.ts >= t0()));
-  const removed = before - db.orders.length;
-
-  logActivity('fa-user-minus', `Vendedor eliminado: ${name} — jornada y ${removed} pedido(s) de hoy borrados`);
-  saveDB();
-  queueCloudSync(0);   /* Firestore al instante → onSnapshot actualiza los demás teléfonos */
-  resetSellerForm();
-  renderCrew();        /* la tarjeta desaparece de la pantalla YA */
-  return removed;
-}
-
-/* Cestica de la TARJETA de jornada (arriba a la derecha) */
-function deleteCrewCard(id) {
-  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
-  const s = sellerById(id);
-  const name = s ? s.name : id;
-  const nToday = db.orders.filter(o => o.sellerId === id && o.ts >= t0()).length;
-  const msg = `Se eliminará a <b>${esc(name)}</b> y se limpiarán de la nube su jornada y asistencia${nToday ? `, junto con <b>${nToday}</b> pedido(s) creados hoy` : ''}. Los pedidos de días anteriores se conservan en el historial. Esta acción no se puede deshacer.`;
-  confirmDialog('Eliminar vendedor y su jornada de hoy', msg, 'Eliminar todo', () => {
-    const removed = purgeSellerById(id);
-    toast(`<b>${esc(name)}</b> eliminado${removed ? ` · ${removed} pedido(s) de hoy borrados` : ''}. Tarjeta de jornada actualizada.`, 'warn');
-  }, true);
-}
-
-/* ==================== PURGA COMPLETA DE UN VENDEDOR ====================
-   Borra de db (y propaga a Firestore con queueCloudSync(0)):
-   1) El registro del vendedor en db.sellers.
-   2) Su jornada/asistencia en db.jornada (inicio, fin, registro de hoy).
-   3) TODOS sus pedidos creados HOY (ts >= inicio del día).
-   Los pedidos de días anteriores se conservan como historial. */
-function purgeSellerById(id) {
-  const s = sellerById(id);
-  const name = s ? s.name : id;
-  const idx = getSellers().findIndex(x => x.id === id);
-  if (idx >= 0) getSellers().splice(idx, 1);
-  delete db.jornada[id]; /* jornada + asistencia del día */
-
-  const before = db.orders.length;
-  db.orders = db.orders.filter(o => !(o.sellerId === id && o.ts >= t0()));
-  const removed = before - db.orders.length;
-
-  logActivity('fa-user-minus', `Vendedor eliminado: ${name} — jornada y ${removed} pedido(s) de hoy borrados`);
-  saveDB();
-  queueCloudSync(0);   /* Firestore al instante → onSnapshot actualiza los demás teléfonos */
-  resetSellerForm();
-  renderCrew();        /* la tarjeta desaparece de la pantalla YA */
-  return removed;
-}
-
-/* Cestica de la TARJETA de jornada (arriba a la derecha) */
-function deleteCrewCard(id) {
-  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
-  const s = sellerById(id);
-  const name = s ? s.name : id;
-  const nToday = db.orders.filter(o => o.sellerId === id && o.ts >= t0()).length;
-  const msg = `Se eliminará a <b>${esc(name)}</b> y se limpiarán de la nube su jornada y asistencia${nToday ? `, junto con <b>${nToday}</b> pedido(s) creados hoy` : ''}. Los pedidos de días anteriores se conservan en el historial. Esta acción no se puede deshacer.`;
-  confirmDialog('Eliminar vendedor y su jornada de hoy', msg, 'Eliminar todo', () => {
-    const removed = purgeSellerById(id);
-    toast(`<b>${esc(name)}</b> eliminado${removed ? ` · ${removed} pedido(s) de hoy borrados` : ''}. Tarjeta de jornada actualizada.`, 'warn');
-  }, true);
-}
 
 /* Cestica de la LISTA de Gestión de Vendedores (mismo mecanismo, por ID seguro) */
 function deleteSeller(i) {
@@ -1912,6 +1760,7 @@ function deleteSeller(i) {
   const s = getSellers()[i]; if (!s) return;
   deleteCrewCard(s.id);
 }
+
 /* ============================ 17. VISTAS — INVENTARIO / RESPALDO ============================ */
 function invRows() {
   const q = (ui.invQ || '').toLowerCase().trim();
