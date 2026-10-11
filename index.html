@@ -1416,7 +1416,9 @@ function sellerRowHTML(s, i) {
       <button onclick="editSeller(${i})" class="btn-line w-8 h-8 rounded-lg" title="Editar" aria-label="Editar ${esc(s.name)}">
         <i class="fa-solid fa-pen text-[10px]"></i>
       </button>
-      <button onclick="toggleSellerActive(${i})" class="btn-line w-8 h-8 rounded-lg" title="${on ? 'Dar de baja' : 'Reactivar'}" aria-label="${on ? 'Dar de baja' : 'Reactivar'} ${esc(s.name)}">
+      <button onclick="toggleSellerActive(${i})" class="tag cursor-pointer border transition-all font-semibold px-2 py-0.5 rounded text-xs ${on ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-300'}">
+  ${on ? '● Activo' : '○ Inactivo'}
+</button>
         <i class="fa-solid ${on ? 'fa-user-slash' : 'fa-user-check'} text-[10px]"></i>
       </button>
       <button onclick="deleteSeller(${i})" class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Eliminar definitivamente" aria-label="Eliminar ${esc(s.name)}">
