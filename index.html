@@ -1471,8 +1471,7 @@ function crewCardHTML(u, today) {
 
 function renderCrew() { const el = document.getElementById('crew-body'); if (el) el.innerHTML = crewBodyHTML(); }
 
-/* ============================ 15. ACCIONES DE NEGOCIO ============================ */
-function submitOrder() {
+/* ============================ 15. ACCIONES DE NEGOCIO ============================ *Order() {
   if (!cart.length) { toast('El pedido está vacío.', 'warn'); return; }
   const name = ($('#c-name').value || '').trim();
   if (!name) { toast('Indica el nombre del cliente.', 'warn'); return; }
@@ -1673,7 +1672,7 @@ function saveSellerForm(e) {
   } else {
     getSellers().push({ id, name, zone, pin, active: true });
     logActivity('fa-user-plus', `Vendedor registrado: ${name} (${id}) — zona ${zone}`);
-    saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew();
+    saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); if(typeof renderSellers === 'function') renderSellers();
     toast(`<b>${esc(name)}</b> registrado. Ya puede iniciar sesión con su PIN desde cualquier teléfono.`, 'ok');
   }
 }
