@@ -1744,22 +1744,64 @@ function purgeSellerById(id) {
 
 /* Cestica de la TARJETA de jornada (arriba a la derecha) */
 function deleteCrewCard(id) {
-  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
-  const s = sellerById(id);
-  const name = s ? s.name : id;
-  const nToday = db.orders.filter(o => o.sellerId === id && o.ts >= t0()).length;
-  const msg = `Se eliminará a <b>${esc(name)}</b> y se limpiarán de la nube su jornada y asistencia${nToday ? `, junto con <b>${nToday}</b> pedido(s) creados hoy` : ''}. Los pedidos de días anteriores se conservan en el historial. Esta acción no se puede deshacer.`;
-  confirmDialog('Eliminar vendedor y su jornada de hoy', msg, 'Eliminar todo', () => {
-    const removed = purgeSellerById(id);
-    toast(`<b>${esc(name)}</b> eliminado${removed ? ` · ${removed} pedido(s) de hoy borrados` : ''}. Tarjeta de jornada actualizada.`, 'warn');
-  }, true);
+  deleteSellerById(id);
 }
 
-/* Cestica de la LISTA de Gestión de Vendedores (mismo mecanismo, por ID seguro) */
 function deleteSeller(i) {
-  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
-  const s = getSellers()[i]; if (!s) return;
-  deleteCrewCard(s.id);
+  if (typeof isAdmin === 'function' && !isAdmin()) {
+    if (typeof toast === 'function') toast('Acción exclusiva de Administración.', 'bad');
+    return;
+  }
+  const s = getSellers()[i];
+  if (!s) return;
+  deleteSellerById(s.id || s.name);
+}
+
+function deleteSellerById(identifier) {
+  if (typeof isAdmin === 'function' && !isAdmin()) {
+    if (typeof toast === 'function') toast('Acción exclusiva de Administración.', 'bad');
+    return;
+  }
+
+  // Buscar el vendedor en db.sellers
+  let index = -1;
+  let s = null;
+  if (db.sellers) {
+    index = db.sellers.findIndex(item => item.id === identifier || item.name === identifier || item === identifier);
+    if (index !== -1) s = db.sellers[index];
+  }
+
+  const name = s ? (s.name || s.id) : identifier;
+  const sId = s ? (s.id || s.name) : identifier;
+
+  // 1. Eliminar de la lista de vendedores
+  if (index !== -1 && db.sellers) {
+    db.sellers.splice(index, 1);
+  } else if (db.sellers) {
+    db.sellers = db.sellers.filter(item => item.id !== identifier && item.name !== identifier && item !== identifier);
+  }
+
+  // 2. Limpieza profunda: borrar pedidos, jornada y registros activos del día
+  if (db.orders) {
+    db.orders = db.orders.filter(o => o.sellerId !== sId && o.seller !== name && o.sellerId !== identifier);
+  }
+  if (db.crew) {
+    db.crew = db.crew.filter(c => c.id !== sId && c.sellerId !== sId && c.name !== name && c.id !== identifier);
+  }
+
+  // 3. Guardar cambios en el almacenamiento local
+  if (typeof saveDB === 'function') saveDB();
+
+  // 4. Refrescar todas las pantallas de inmediato
+  if (typeof renderSellers === 'function') renderSellers();
+  if (typeof renderCrew === 'function') renderCrew();
+  if (typeof renderApp === 'function') renderApp();
+
+  if (typeof toast === 'function') {
+  toast(`<b>${name}</b> eliminado por completo y jornada limpiada.`);
+  } else {
+    alert(`Vendedor ${name} eliminado con éxito.`);
+  }
 }
 
 /* ============================ 17. VISTAS — INVENTARIO / RESPALDO ============================ */
