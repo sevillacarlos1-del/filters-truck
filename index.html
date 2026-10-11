@@ -1435,7 +1435,7 @@ const renderSellers = renderCrew;
 /* ==================== TARJETA DE JORNADA (con cestica 🗑) ==================== */
 function crewCardHTML(u, today) {
   const j = db.jornada[u.id];
-  const on = j && !j.end;
+  const on = (u.active !== false) && (j && !j.end);
   const mine = today.filter(o => o.sellerId === u.id);
   return `
   <div class="card">
