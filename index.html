@@ -1469,7 +1469,18 @@ function crewCardHTML(u, today) {
   </div>`;
 }
 
-function renderCrew() { const el = document.getElementById('crew-body'); if (el) el.innerHTML = crewBodyHTML(); }
+/* ==================== RENDER DE JORNADA (preserva #sellerMgmt abierto) ==================== */
+/* Re-pinta el cuerpo de la vista Jornada SIN cerrar la tarjeta grande de Gestión de
+   Vendedores: captura su estado `open` antes del innerHTML y lo restaura después.
+   Así, registrar/editar vendedores (y cualquier re-render) mantiene la lista de PINs visible. */
+function renderCrew() {
+  const el = document.getElementById('crew-body');
+  if (!el) return;
+  const prevOpen = document.getElementById('sellerMgmt')?.open;
+  el.innerHTML = crewBodyHTML();
+  const d = document.getElementById('sellerMgmt');
+  if (d) d.open = (prevOpen === undefined) ? true : prevOpen;
+}
 
 /* ============================ 15. ACCIONES DE NEGOCIO ============================ *Order() {
   if (!cart.length) { toast('El pedido está vacío.', 'warn'); return; }
@@ -1642,7 +1653,7 @@ function resetDB() {
   }, true);
 }
 
-/* ============================ 16. CRUD DE VENDEDORES (solo admin + Firestore en vivo) ============================ */
+/* ==================== REGISTRO/EDICIÓN DE VENDEDOR (mantiene #sellerMgmt abierto) ==================== */
 function saveSellerForm(e) {
   e.preventDefault();
   if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
@@ -1667,19 +1678,22 @@ function saveSellerForm(e) {
     if (editId !== id && db.jornada[editId]) { db.jornada[id] = db.jornada[editId]; delete db.jornada[editId]; }
     s.name = name; s.id = id; s.zone = zone; s.pin = pin;
     logActivity('fa-user-pen', `Vendedor actualizado: ${name} (${id})`);
-    saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew();
+    saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); ensureSellerMgmtOpen();
     toast(`Ficha de <b>${esc(name)}</b> actualizada y sincronizada.`, 'ok');
- } else {
-  if (!db.sellers) db.sellers = [];
-  db.sellers.push({ id, name, zone, pin, active: true });
-  logActivity('fa-user-plus', `Vendedor registrado: ${name} (${id}) - zona ${zone}`);
-  saveDB();
-  queueCloudSync(0); 
-  resetSellerForm(); 
-  renderCrew();
-  if (typeof renderSellers === 'function') renderSellers();
-  toast(`<b>${esc(name)}</b> registrado. Ya puede iniciar sesión con su PIN desde cualquier teléfono.`, 'ok');
- }
+  } else {
+    /* El registro se inserta en la lista persistente db.sellers y se sincroniza */
+    getSellers().push({ id, name, zone, pin, active: true });
+    logActivity('fa-user-plus', `Vendedor registrado: ${name} (${id}) — zona ${zone}`);
+    saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); ensureSellerMgmtOpen();
+    toast(`<b>${esc(name)}</b> registrado. Ya puede iniciar sesión con su PIN desde cualquier teléfono.`, 'ok');
+  }
+}
+
+/* Garantiza que la tarjeta grande de Gestión de Vendedores quede SIEMPRE abierta
+   (lista completa con PINs e información intacta) tras registrar o guardar. */
+function ensureSellerMgmtOpen() {
+  const d = document.getElementById('sellerMgmt');
+  if (d) d.open = true;
 }
 
 function resetSellerForm() {
