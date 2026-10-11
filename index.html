@@ -1753,6 +1753,7 @@ function deleteCrewCard(id) {
     const removed = purgeSellerById(id);
     toast(`<b>${esc(name)}</b> eliminado${removed ? ` · ${removed} pedido(s) de hoy borrados` : ''}. Tarjeta de jornada actualizada.`, 'warn');
   }, true);
+}
 
 /* Cestica de la LISTA de Gestión de Vendedores (mismo mecanismo, por ID seguro) */
 function deleteSeller(i) {
