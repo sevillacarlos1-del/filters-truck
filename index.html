@@ -602,7 +602,14 @@ function validateSession() {
   sessionStorage.removeItem(SESS_KEY); session = null;
   return false;
 }
-
+function toggleJornada(id) {
+    const s = db.sellers.find(x => x.id === id);
+    if (s) {
+        s.active = s.active === false ? true : false;
+        saveDB();
+        if (typeof render === 'function') render();
+    }
+}
 function doLogin() {
   const role = $('#login-role').value;
   const cred = ($('#login-pass').value || '').trim();
