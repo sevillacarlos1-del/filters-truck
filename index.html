@@ -518,7 +518,7 @@ const prod = code => (db && db.products ? db.products : PRODUCTS).find(p => p.co
 
 /* ---- Lista dinámica de vendedores (fuente única de verdad) ---- */
 const getSellers     = () => db.sellers;
-const activeSellers  = () => getSellers().filter(s => s.active !== false);
+const activeSellers = () => getSellers().filter(s => s.active === true || s.active === undefined);
 const sellerById     = id => getSellers().find(s => s.id === id);
 function nextSellerId() {
   let max = 0;
