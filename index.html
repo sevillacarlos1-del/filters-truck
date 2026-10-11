@@ -1669,12 +1669,17 @@ function saveSellerForm(e) {
     logActivity('fa-user-pen', `Vendedor actualizado: ${name} (${id})`);
     saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew();
     toast(`Ficha de <b>${esc(name)}</b> actualizada y sincronizada.`, 'ok');
-  } else {
-    getSellers().push({ id, name, zone, pin, active: true });
-    logActivity('fa-user-plus', `Vendedor registrado: ${name} (${id}) — zona ${zone}`);
-    saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); if(typeof renderSellers === 'function') renderSellers();
-    toast(`<b>${esc(name)}</b> registrado. Ya puede iniciar sesión con su PIN desde cualquier teléfono.`, 'ok');
-  }
+ } else {
+  if (!db.sellers) db.sellers = [];
+  db.sellers.push({ id, name, zone, pin, active: true });
+  logActivity('fa-user-plus', `Vendedor registrado: ${name} (${id}) - zona ${zone}`);
+  saveDB();
+  queueCloudSync(0); 
+  resetSellerForm(); 
+  renderCrew();
+  if (typeof renderSellers === 'function') renderSellers();
+  toast(`<b>${esc(name)}</b> registrado. Ya puede iniciar sesión con su PIN desde cualquier teléfono.`, 'ok');
+ }
 }
 
 function resetSellerForm() {
