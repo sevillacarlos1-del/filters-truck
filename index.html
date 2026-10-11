@@ -1721,20 +1721,31 @@ function editSeller(i) {
 }
 
 function toggleSellerActive(i) {
-  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
-  const s = getSellers()[i]; if (!s) return;
-  const on = s.active !== false;
-  const doIt = () => {
-    s.active = !on;
-    if (on && db.jornada[s.id] && !db.jornada[s.id].end) db.jornada[s.id].end = Date.now();
-    logActivity(on ? 'fa-user-slash' : 'fa-user-check', on ? `Vendedor dado de baja: ${s.name}` : `Vendedor reactivado: ${s.name}`);
-    saveDB(); queueCloudSync(0); renderCrew();
-    toast(on ? `<b>${esc(s.name)}</b> dado de baja y sincronizado.` : `<b>${esc(s.name)}</b> reactivado.`, on ? 'warn' : 'ok');
-  };
-  confirmDialog(on ? 'Dar de baja' : 'Reactivar vendedor',
-    on ? `¿Dar de baja a <b>${esc(s.name)}</b>? Conservará su historial de pedidos y podrás reactivarlo cuando quieras.`
-       : `¿Reactivar a <b>${esc(s.name)}</b>? Volverá a estar disponible en el login y las jornadas.`,
-    on ? 'Dar de baja' : 'Reactivar', doIt, on);
+  if (typeof isAdmin === 'function' && !isAdmin()) {
+    if (typeof toast === 'function') toast('Acción exclusiva para administradores');
+    return;
+  }
+  
+  const sellersList = typeof getSellers === 'function' ? getSellers() : db.sellers;
+  const s = sellersList[i];
+  
+  if (!s) return;
+
+  // Invertir el estado actual (si era true pasa a false, si era false pasa a true)
+  s.active = s.active === false ? true : false;
+
+  // Guardar cambios en la base de datos local y sincronizar
+  if (typeof saveDB === 'function') saveDB();
+  if (typeof queueCloudSync === 'function') queueCloudSync(0);
+
+  // Refrescar ambas vistas para que el cambio se refleje al instante arriba y abajo
+  if (typeof renderSellers === 'function') renderSellers();
+  if (typeof renderCrew === 'function') renderCrew();
+  if (typeof renderJornada === 'function') renderJornada();
+
+  if (typeof toast === 'function') {
+    toast(`Vendedor <b>${s.name}</b> ahora está ${s.active ? 'Activo' : 'Inactivo'}`);
+  }
 }
 
 /* ==================== PURGA COMPLETA DE UN VENDEDOR ====================
