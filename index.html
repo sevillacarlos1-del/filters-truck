@@ -498,6 +498,7 @@ function techSVG(p) {
 }
 
 /* ============================ 6. CAPA DE DATOS ============================ */
+/* ======================== 6. CAPA DE DATOS ======================== */
 function seedDB() {
     return {
         products: [],
@@ -508,6 +509,8 @@ function seedDB() {
         activity: []
     };
 }
+
+let db = null;
 
 function migrateDB() {
     if (!db) return;
@@ -520,6 +523,11 @@ function migrateDB() {
             ...s
         }));
     }
+    if (!Array.isArray(db.activity)) db.activity = [];
+    if (typeof db.jornada !== 'object' || !db.jornada) db.jornada = {};
+    if (!Array.isArray(db.products)) db.products = [];
+    if (!Array.isArray(db.orders)) db.orders = [];
+    if (typeof db.counter !== 'number') db.counter = 1;
 }
 function loadDB() {
   try {
