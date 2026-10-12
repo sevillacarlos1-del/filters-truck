@@ -501,7 +501,7 @@ function techSVG(p) {
 function seedDB() {
   const now = Date.now(), H = 3600e3;
   const mk = (n, seller, client, items, status, hrsAgo, extraHist) => {
-    const u = USERS.find(x => x.id === seller) || { name:'Vendedor', zone:'General' };
+    const u = USERS.find(x => x.id === seller) || { name: 'Vendedor', zone: 'General' };
     const sub = round2(items.reduce((a, i) => a + i.qty * i.price, 0));
     const tax = round2(sub * IVA_RATE);
     return {
