@@ -499,78 +499,33 @@ function techSVG(p) {
 
 /* ============================ 6. CAPA DE DATOS ============================ */
 function seedDB() {
-  const now = Date.now(), H = 3600e3;
-  const mk = (n, seller, client, items, status, hrsAgo, extraHist) => {
-    const u = USERS.find(x => x.id === seller) || { name:'Vendedor', zone:'General' };
-    const sub = round2(items.reduce((a, i) => a + i.qty * i.price, 0));
-    const tax = round2(sub * IVA_RATE);
     return {
-      id: uid(), number: `TF26-${String(n).padStart(4, '0')}`, sellerId: seller, sellerName: u.name,
-      ts: now - hrsAgo * H, client, items, subtotal: sub, tax, total: round2(sub + tax), status,
-      history: extraHist || [{ status:'pendiente', ts: now - hrsAgo * H, by: seller }],
-      rejectReason: ''
+        products: [],
+        orders: [],
+        counter: 1,
+        sellers: [],
+        jornada: {},
+        activity: []
     };
-  };
-
-  const o1 = mk(1, 'VEND-001',
-    { name:'Distribuidora Los Andes, C.A.', rif:'J-30184726-5', contact:'José Pérez', phone:'0414-4112233', address:'Zona Industrial El Piñonal' },
-    [
-      { code:'TF-55102', name:'Filtro de aceite giratorio HD', qty:12, price:11.90, base:12.50 },
-      { code:'TF-33021', name:'Elemento de combustible 2 µm', qty:24, price:14.60, base:15.75 }
-    ], 'pendiente', 9);
-
-  const o2 = mk(2, 'VEND-002',
-    { name:'Repuestos El Trigal', rif:'J-40555123-9', contact:'María Salazar', phone:'0412-8899776', address:'Av. Paseo Cabriales' },
-    [
-      { code:'TF-22108', name:'Filtro de aire primario radial', qty:4, price:34.90, base:34.90 },
-      { code:'TF-44105', name:'Filtro hidráulico de alta presión', qty:4, price:28.50, base:28.50 }
-    ], 'aprobado', 6, [
-      { status:'pendiente', ts: now - 6 * H, by:'VEND-002' },
-      { status:'aprobado',  ts: now - 4.5 * H, by:'Administración' }
-    ]);
-
-  const o3 = mk(3, 'VEND-001',
-    { name:'Transporte Bolívar C.A.', rif:'G-20012458-1', contact:'Ramón Utrera', phone:'0416-6411122', address:'Autopista Valencia-Puerto Cabello' },
-    [
-      { code:'TF-88214', name:'Válvula reguladora de presión', qty:2, price:31.00, base:31.00 }
-    ], 'despachado', 3, [
-      { status:'pendiente',  ts: now - 3 * H, by:'VEND-001' },
-      { status:'aprobado',   ts: now - 3 * H, by:'Administración' },
-      { status:'despachado', ts: now - 2 * H, by:'Administración' }
-    ]);
-
-  return {
-    products: PRODUCTS.map(p => ({ ...p })),
-    orders: [o1, o2, o3],
-    counter: 4,
-    sellers: USERS.map(u => ({ ...u, active: true })),
-    jornada: { 'VEND-001': { start: now - 9.5 * H, end: null }, 'VEND-002': { start: now - 8.5 * H, end: null } },
-    activity: [
-      { ts: now - 2 * H,   ic:'fa-truck-fast',    t:'Pedido TF26-0003 despachado — Transporte Bolívar' },
-      { ts: now - 4.5 * H, ic:'fa-circle-check',  t:'Pedido TF26-0002 aprobado por Administración' },
-      { ts: now - 9 * H,   ic:'fa-file-invoice',  t:'Pedido TF26-0001 generado por Carlos Mendoza' }
-    ]
-  };
 }
 
 let db = null;
 
 function migrateDB() {
-  if (!db) return;
-  if (!Array.isArray(db.sellers) || !db.sellers.length) {
-    db.sellers = USERS.map(u => ({ ...u, active: true }));
-  } else {
-    // Asegurar que active sea exclusivamente booleano y preservado
-    db.sellers = db.sellers.map(s => ({
-      active: (s.active !== false && s.active !== 'false' && s.active !== 0),
-      ...s,
-      active: (s.active !== false && s.active !== 'false' && s.active !== 0)
-    }));
-  }
-  if (!Array.isArray(db.activity)) db.activity = [];
-  if (typeof db.jornada !== 'object' || !db.jornada) db.jornada = {};
-  if (!Array.isArray(db.products) || !db.products.length) db.products = PRODUCTS.map(p => ({ ...p }));
-  if (!db.counter) db.counter = (db.orders ? db.orders.length : 0) + 1;
+    if (!db) return;
+    if (!Array.isArray(db.sellers)) {
+        db.sellers = [];
+    } else {
+        db.sellers = db.sellers.map(s => ({
+            active: (s.active !== false && s.active !== 'false' && s.active !== 0),
+            ...s
+        }));
+    }
+    if (!Array.isArray(db.activity)) db.activity = [];
+    if (typeof db.jornada !== 'object' || !db.jornada) db.jornada = {};
+    if (!Array.isArray(db.products)) db.products = [];
+    if (!Array.isArray(db.orders)) db.orders = [];
+    if (typeof db.counter !== 'number') db.counter = 1;
 }
 
 function loadDB() {
