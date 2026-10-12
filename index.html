@@ -498,8 +498,10 @@ function techSVG(p) {
 }
 
 /* ============================ 6. CAPA DE DATOS ============================ */
-/* ======================== 6. CAPA DE DATOS ======================== */
-/* ======================== 6. CAPA DE DATOS ======================== */
+// 1. PRIMERO LA VARIABLE GLOBAL SOLITA
+let db = null;
+
+// 2. LUEGO SEEDDB
 function seedDB() {
     return {
         products: [],
@@ -511,8 +513,7 @@ function seedDB() {
     };
 }
 
-let db = null;
-
+// 3. LUEGO MIGRATE
 function migrateDB() {
     if (!db) return;
     if (!Array.isArray(db.sellers)) {
@@ -530,6 +531,7 @@ function migrateDB() {
     if (typeof db.counter !== 'number') db.counter = 1;
 }
 
+// 4. LUEGO LOADDB
 function loadDB() {
     try {
         const raw = localStorage.getItem(DB_KEY);
