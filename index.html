@@ -509,6 +509,17 @@ function seedDB() {
     };
 }
 
+function seedDB() {
+    return {
+        products: [],
+        orders: [],
+        counter: 1,
+        sellers: [],
+        jornada: {},
+        activity: []
+    };
+}
+
 function migrateDB() {
     if (!db) return;
     if (!Array.isArray(db.sellers)) {
@@ -517,11 +528,10 @@ function migrateDB() {
         // Asegurar que active sea exclusivamente booleano y preservado
         db.sellers = db.sellers.map(s => ({
             active: (s.active !== false && s.active !== 'false' && s.active !== 0),
-            ...s,
-            active: (s.active !== false && s.active !== 'false' && s.active !== 0)
+            ...s
         }));
     }
-
+}
 function loadDB() {
   try {
     const raw = localStorage.getItem(DB_KEY);
