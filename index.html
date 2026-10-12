@@ -509,17 +509,6 @@ function seedDB() {
     };
 }
 
-function seedDB() {
-    return {
-        products: [],
-        orders: [],
-        counter: 1,
-        sellers: [],
-        jornada: {},
-        activity: []
-    };
-}
-
 function migrateDB() {
     if (!db) return;
     if (!Array.isArray(db.sellers)) {
