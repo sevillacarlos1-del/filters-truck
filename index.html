@@ -547,10 +547,13 @@ function saveDB() {
 loadDB();
 
 const prod = code => (db && db.products ? db.products : PRODUCTS).find(p => p.code === code);
+function getSellers() {
+  return (db && db.sellers) ? db.sellers : [];
+}
 
-/* ---- Fuente única de verdad: un solo criterio de "Activo" para panel, login y sesión ---- */
-const isSellerActive = s => !!s && s.active !== false && s.active !== 'false' && s.active !== 0;
-const activeSellers  = () => getSellers().filter(isSellerActive);
+/* ---- Fuente única de verdad: un solo criterio de "Activo" para... */
+const isSellerActive = s => !!s && s.active !== false && s.active !== 'false';
+const activeSellers = () => getSellers().filter(isSellerActive);
 const sellerById = id => getSellers().find(s => s.id === id || s.name === id);
 
 function nextSellerId() {
