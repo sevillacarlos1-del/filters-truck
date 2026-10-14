@@ -136,7 +136,7 @@ const CONDS = {
 };
 
 const TYPE_META = {
-  aceite:       { l:'Aceite',        icon:'.ico-oil-can'   },
+  aceite:       { l:'Aceite',        icon:'fa-oil-can'   },
   aire:         { l:'Aire',          icon:'fa-wind'      },
   combustible:  { l:'Combustible',   icon:'fa-gas-pump'  },
   'hidráulico': { l:'Hidráulico',    icon:'fa-gears'     },
@@ -224,6 +224,7 @@ let   cloudStatus = 'off';
 function setCloudStatus(s) { cloudStatus = s; updateConnChip(); }
 
 function cloudInit() {
+  if (cloudReady) return;
   if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.startsWith('PEGA_')) { setCloudStatus('cfg'); return; }
   if (typeof firebase === 'undefined') { setCloudStatus('off'); return; }
   try {
@@ -510,9 +511,11 @@ function migrateDB() {
     if (!Array.isArray(db.sellers)) {
         db.sellers = [];
     } else {
+        /* FIX: antes era { active: calc, ...s } → el spread sobrescribía el cálculo.
+           Ahora el valor normalizado SIEMPRE gana: false/'false'/0 → inactivo; ausente/null → activo. */
         db.sellers = db.sellers.map(s => ({
-            active: (s.active !== false && s.active !== 'false' && s.active !== 0),
-            ...s
+            ...s,
+            active: (s.active !== false && s.active !== 'false' && s.active !== 0)
         }));
     }
     if (!Array.isArray(db.activity)) db.activity = [];
@@ -545,12 +548,9 @@ loadDB();
 
 const prod = code => (db && db.products ? db.products : PRODUCTS).find(p => p.code === code);
 
-/* ---- Lista dinámica de vendedores (fuente única de verdad) ---- */
-const getSellers = () => (db && Array.isArray(db.sellers)) ? db.sellers : [];
-
-/* REQUISITO: activeSellers filtra ÚNICAMENTE por s.active !== false y NO depende de jornada */
-const activeSellers = () => getSellers().filter(s => s && s.active !== false && s.active !== 'false' && s.active !== 0);
-
+/* ---- Fuente única de verdad: un solo criterio de "Activo" para panel, login y sesión ---- */
+const isSellerActive = s => !!s && s.active !== false && s.active !== 'false' && s.active !== 0;
+const activeSellers  = () => getSellers().filter(isSellerActive);
 const sellerById = id => getSellers().find(s => s.id === id || s.name === id);
 
 function nextSellerId() {
@@ -624,13 +624,12 @@ function isAdmin() { return !!(session && session.role === 'admin'); }
 
 function validateSession() {
   if (!session) return false;
-  loadDB();
   if (session.role === 'seller') {
     const u = sellerById(session.id);
-    if (!u || u.active === false || u.active === 'false' || u.active === 0) {
+    if (!isSellerActive(u)) {
       sessionStorage.removeItem(SESS_KEY);
       session = null; cart = [];
-      toast('Tu cuenta de vendedor no se encuentra activa en el sistema. Debe dirigirse a administración para que active su cuenta.', 'warn', 4500);
+      toast('Tu cuenta de vendedor fue eliminada o desactivada por Administración.', 'warn', 4500);
       return false;
     }
     session.name = u.name;
@@ -642,33 +641,45 @@ function validateSession() {
   return false;
 }
 
-/* REQUISITO: toggleJornada actualiza correctamente s.active, guarda en DB (saveDB()) y repinta de forma síncrona */
+/* Jornada = solo inicio/fin del día. JAMÁS toca s.active. */
 function toggleJornada(id) {
+  if (!isAdmin()) { toast('Acción exclusiva para Administración.', 'bad'); return; }
   loadDB();
   const s = sellerById(id);
-  if (s) {
-    s.active = (s.active === false || s.active === 'false' || s.active === 0) ? true : false;
-    
-    // Si tiene registro de jornada de hoy, actualiza también la marca temporal
-    if (!db.jornada) db.jornada = {};
-    const j = db.jornada[s.id] || {};
-    if (s.active) {
-      db.jornada[s.id] = { start: j.start || Date.now(), end: null };
-    } else {
-      if (j.start && !j.end) j.end = Date.now();
-      db.jornada[s.id] = j;
-    }
-    
-    saveDB();
-    
-    // Repintado síncrono de interfaces
-    if (typeof renderCrew === 'function') renderCrew();
-    if (typeof renderSellers === 'function') renderSellers();
-    if (typeof render === 'function') render();
-    if (!session && typeof renderLogin === 'function') renderLogin();
-
-    toast(`Vendedor <b>${esc(s.name)}</b> ahora está <b>${s.active ? 'Activo' : 'Inactivo'}</b>.`, s.active ? 'ok' : 'warn');
+  if (!s) return;
+  if (!db.jornada) db.jornada = {};
+  const j = db.jornada[s.id];
+  if (j && !j.end) {
+    j.end = Date.now();
+    logActivity('fa-flag-checkered', `${s.name} finalizó jornada`);
+    toast(`Jornada de <b>${esc(s.name)}</b> finalizada.`, 'info');
+  } else {
+    db.jornada[s.id] = { start: Date.now(), end: null };
+    logActivity('fa-play', `${s.name} inició jornada`);
+    toast(`Jornada de <b>${esc(s.name)}</b> iniciada.`, 'ok');
   }
+  saveDB();
+  if (typeof renderCrew === 'function') renderCrew();
+}
+
+/* Activar/Desactivar cuenta = SOLO s.active. Al desactivar, cierra jornada abierta. */
+function toggleSellerActive(identifier) {
+  if (!isAdmin()) { toast('Acción exclusiva para Administración.', 'bad'); return; }
+  loadDB();
+  const list = getSellers();
+  const s = (typeof identifier === 'number') ? list[identifier]
+          : list.find(x => x.id === identifier || x.name === identifier);
+  if (!s) return;
+  const nowActive = !isSellerActive(s);
+  s.active = nowActive;
+  if (!nowActive && db.jornada && db.jornada[s.id] && !db.jornada[s.id].end) {
+    db.jornada[s.id].end = Date.now();
+  }
+  logActivity(nowActive ? 'fa-user-check' : 'fa-user-slash',
+    `${nowActive ? 'Vendedor reactivado' : 'Vendedor desactivado'}: ${s.name}`);
+  saveDB();
+  if (typeof renderCrew === 'function') renderCrew();
+  toast(`Vendedor <b>${esc(s.name)}</b> ahora está <b>${nowActive ? 'Activo' : 'Inactivo'}</b>.`, nowActive ? 'ok' : 'warn');
 }
 
 /* Función auxiliar de alternancia de estado desde la tabla */
@@ -689,64 +700,72 @@ function toggleSellerActive(identifier) {
 
 /* REQUISITO: Validación en doLogin() que reconoce al vendedor activo de inmediato y permite ingreso por PIN */
 function doLogin() {
-  loadDB(); // Lectura obligatoria de estado fresco en caliente
+  loadDB(); /* estado local como base; abajo se refresca contra el servidor si hay nube */
   const role = $('#login-role')?.value || 'seller';
   const cred = ($('#login-pass')?.value || '').trim();
+  const nameSel = ($('#login-name')?.value || '').trim(); /* capturado ANTES de cualquier re-render */
 
   if (role === 'admin') {
     if (!cred) { toast('Ingresa la contraseña administrativa.', 'warn'); return; }
     if (cred !== ADMIN_USER.pass) { toast('Contraseña administrativa incorrecta.', 'bad'); return; }
     session = { id:'ADMIN', name: ADMIN_USER.name, role:'admin' };
-  } else {
-    const nameSel = ($('#login-name')?.value || '').trim();
+    sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
+    ui.view = defaultView(); loadCart(); initApp();
+    toast(`¡Bienvenido, <b>${esc(session.name)}</b>!`, 'ok');
+    return;
+  }
+
+  const finish = () => {
     const all = getSellers();
-
-    if (!all.length) {
-      toast('No hay vendedores registrados en el sistema. Solicita a Administración registrar uno.', 'bad');
-      return;
-    }
-    if (!nameSel) {
-      toast('Selecciona tu nombre de vendedor.', 'warn');
-      return;
-    }
-    if (!cred) {
-      toast('Ingresa tu clave de acceso (PIN de 4 dígitos).', 'warn');
-      return;
-    }
-    if (!/^\d{4}$/.test(cred)) {
-      toast('El PIN debe tener exactamente 4 dígitos numéricos.', 'bad');
-      return;
-    }
-
-    // Buscar en la lista de vendedores registrados
-    const u = all.find(x => x.name.toLowerCase() === nameSel.toLowerCase() || x.id.toLowerCase() === nameSel.toLowerCase());
-    if (!u) {
-      toast('Vendedor no encontrado en el sistema.', 'bad');
-      return;
-    }
-
-    // Validación estricta de s.active !== false (independiente de si inició jornada o no)
-    if (u.active === false || u.active === 'false' || u.active === 0) {
+    if (!all.length) { toast('No hay vendedores registrados. Solicita a Administración registrar uno.', 'bad'); return; }
+    if (!nameSel) { toast('Selecciona tu nombre de vendedor.', 'warn'); return; }
+    if (!/^\d{4}$/.test(cred)) { toast('El PIN debe tener exactamente 4 dígitos numéricos.', 'bad'); return; }
+    const u = all.find(x => (x.name || '').toLowerCase() === nameSel.toLowerCase()
+                         || (x.id   || '').toLowerCase() === nameSel.toLowerCase());
+    if (!u) { toast('Vendedor no encontrado en el sistema.', 'bad'); return; }
+    if (!isSellerActive(u)) {
       toast(`La cuenta de <b>${esc(u.name)}</b> está inactiva. Debe dirigirse a administración para que active su cuenta.`, 'warn', 4500);
       return;
     }
-
-    // Comprobación de PIN
-    if (cred !== String(u.pin)) {
-      toast(`Clave (PIN) incorrecta para <b>${esc(u.name)}</b>.`, 'bad');
-      return;
-    }
-
+    if (cred !== String(u.pin)) { toast(`Clave (PIN) incorrecta para <b>${esc(u.name)}</b>.`, 'bad'); return; }
     session = { id: u.id, name: u.name, role:'seller' };
+    sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
+    ui.view = defaultView(); loadCart(); initApp();
+    toast(`¡Bienvenido, <b>${esc(session.name)}</b>!`, 'ok');
+  };
+
+  /* FIX clave: el PIN se valida contra el ESTADO DEL SERVIDOR, no contra la copia local vieja */
+  if (cloudReady && navigator.onLine) {
+    setCloudStatus('sync');
+    cloudRef().get({ source: 'server' })
+      .then(snap => {
+        if (snap.exists) applyRemote(snap.data()); /* aplica y persiste el estado más reciente */
+        setCloudStatus('ok');
+      })
+      .catch(err => { console.warn('doLogin refresh:', err); setCloudStatus('off'); })
+      .finally(finish); /* cred y nameSel ya están capturados: aunque renderLogin repinte, no se pierden */
+  } else {
+    finish();
   }
-
-  sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
-  ui.view = defaultView();
-  loadCart();
-  initApp();
-  toast(`¡Bienvenido, <b>${esc(session.name)}</b>!`, 'ok');
 }
-
+function validateSession() {
+  if (!session) return false;
+  if (session.role === 'seller') {
+    const u = sellerById(session.id);
+    if (!isSellerActive(u)) {
+      sessionStorage.removeItem(SESS_KEY);
+      session = null; cart = [];
+      toast('Tu cuenta de vendedor fue eliminada o desactivada por Administración.', 'warn', 4500);
+      return false;
+    }
+    session.name = u.name;
+    sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
+    return true;
+  }
+  if (session.role === 'admin') return true;
+  sessionStorage.removeItem(SESS_KEY); session = null;
+  return false;
+}
 function onLoginRoleChange() {
   const role = $('#login-role')?.value;
   const pick = $('#seller-pick');
@@ -1515,7 +1534,7 @@ function crewBodyHTML() {
 
 /* ============ LISTA DE VENDEDORES — FILAS DEL PANEL ADMIN ============ */
 function sellerRowHTML(s, i) {
-  const on = s.active !== false && s.active !== 'false' && s.active !== 0;
+  const on = isSellerActive(s);
   return `
   <div class="flex items-center gap-3 py-2.5 border-b border-steel-100 last:border-0">
     <div class="w-9 h-9 rounded-full ${on ? 'bg-navy-900 text-acc' : 'bg-steel-200 text-steel-500'} font-disp font-bold text-xs flex items-center justify-center shrink-0">${initialsOf(s.name)}</div>
