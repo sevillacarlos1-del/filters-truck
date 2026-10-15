@@ -1817,8 +1817,7 @@ function onCrewCardDelete(id) {
     } else if (typeof renderSellers === 'function') {
         renderSellers();
     }
-}
-    
+} 
     // 3. Guardar en localStorage y sincronizar con la nube
     if (typeof saveDB === 'function') saveDB();
     if (typeof queueCloudSync === 'function') queueCloudSync(0);
