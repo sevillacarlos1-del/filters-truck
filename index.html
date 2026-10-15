@@ -1817,15 +1817,15 @@ function onCrewCardDelete(id) {
     } else if (typeof renderSellers === 'function') {
         renderSellers();
     }
-}
+} // <--- AQUÍ SE CIERRA onCrewCardDelete
 
 function crewCardHTML(u, today) {
-  const j     = db.jornada ? db.jornada[u.id] : null;
-  const jOpen = !!(j && j.start && !j.end);                                   /* jornada abierta hoy */
-  const on    = u.active !== false && u.active !== 'false' && u.active !== 0;  /* cuenta activa */
-  const mine  = today.filter(o => o.sellerId === u.id);
+    const j = db.jornada ? db.jornada[u.id] : null;
+    const jOpen = !!(j && j.start && !j.end);
+    const on = u.active !== false && u.active !== 'false' && u.active !== 0;
+    const mine = today.filter(o => o.sellerId === u.id);
 
-  return `
+    return `
   <div class="card">
     <div class="flex items-center gap-3">
       <div class="w-11 h-11 rounded-full bg-navy-900 text-acc font-disp font-bold flex items-center justify-center text-base shrink-0">${esc(u.name).charAt(0)}</div>
