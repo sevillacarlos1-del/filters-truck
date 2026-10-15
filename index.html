@@ -1,359 +1,599 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0B1E36">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0B1E36">
 
-<link rel="apple-touch-icon" href="icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="description" content="Sistema comercial Truck Filters, c.a. — Catálogo técnico, pedidos en ruta y control de oficina.">
-<title>Truck Filters, c.a. — Sistema Comercial</title>
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description"
+    content="Sistema comercial Truck Filters, c.a. — Catálogo técnico, pedidos en ruta y control de oficina.">
+  <title>Truck Filters, c.a. — Sistema Comercial</title>
 
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-  theme: { extend: {
-    colors: {
-      navy: {950:'#071426',900:'#0B1E36',800:'#12294A',700:'#1A3760',600:'#234A7C',500:'#2E5C93',100:'#DCE5F0',50:'#EEF3F9'},
-      steel:{50:'#F5F7F9',100:'#ECEFF3',200:'#D9DFE6',300:'#B8C1CC',400:'#8894A3',500:'#616D7C',600:'#49525E'},
-      acc:  {DEFAULT:'#FFB000',dark:'#C98A00',soft:'#FFF3D6'}
-    },
-    fontFamily: {
-      disp:['Oswald','sans-serif'],
-      body:['Barlow','sans-serif'],
-      mono:['"IBM Plex Mono"','monospace']
-    },
-    boxShadow: { hard:'3px 3px 0 0 #0B1E36', hardsm:'2px 2px 0 0 #0B1E36' }
-  }}
-};
-</script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: { 950: '#071426', 900: '#0B1E36', 800: '#12294A', 700: '#1A3760', 600: '#234A7C', 500: '#2E5C93', 100: '#DCE5F0', 50: '#EEF3F9' },
+            steel: { 50: '#F5F7F9', 100: '#ECEFF3', 200: '#D9DFE6', 300: '#B8C1CC', 400: '#8894A3', 500: '#616D7C', 600: '#49525E' },
+            acc: { DEFAULT: '#FFB000', dark: '#C98A00', soft: '#FFF3D6' }
+          },
+          fontFamily: {
+            disp: ['Oswald', 'sans-serif'],
+            body: ['Barlow', 'sans-serif'],
+            mono: ['"IBM Plex Mono"', 'monospace']
+          },
+          boxShadow: { hard: '3px 3px 0 0 #0B1E36', hardsm: '2px 2px 0 0 #0B1E36' }
+        }
+      }
+    };
+  </script>
 
-<!-- Firebase (Firestore) — defer: no bloquea el render; ejecuta antes de DOMContentLoaded -->
-<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <!-- Firebase (Firestore) — defer: no bloquea el render; ejecuta antes de DOMContentLoaded -->
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Barlow:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Barlow:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-<style>
-/* Base de componentes visuales (compatible con GitHub Pages y Vite) */
-.btn, .btn-amber, .btn-navy, .btn-line, .btn-ok, .btn-bad {
-  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 500; transition: all 0.2s; cursor: pointer;
-}
-.btn:disabled, .btn-amber:disabled, .btn-navy:disabled, .btn-line:disabled, .btn-ok:disabled, .btn-bad:disabled {
-  opacity: 0.5; cursor: not-allowed;
-}
-.btn-amber { background-color: #FFB000; color: #071426; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
-.btn-amber:hover:not(:disabled) { background-color: #C98A00; }
-.btn-navy  { background-color: #12294A; color: #ffffff; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
-.btn-navy:hover:not(:disabled)  { background-color: #1A3760; }
-.btn-line  { border: 1px solid #D9DFE6; background-color: #ffffff; color: #0B1E36; }
-.btn-line:hover:not(:disabled)  { background-color: #F5F7F9; }
-.btn-ok    { background-color: #059669; color: #ffffff; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
-.btn-ok:hover:not(:disabled)    { background-color: #047857; }
-.btn-bad   { background-color: #dc2626; color: #ffffff; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
-.btn-bad:hover:not(:disabled)   { background-color: #b91c1c; }
+  <style>
+    /* Base de componentes visuales (compatible con GitHub Pages y Vite) */
+    .btn,
+    .btn-amber,
+    .btn-navy,
+    .btn-line,
+    .btn-ok,
+    .btn-bad {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
 
-.input      { width: 100%; border-radius: 0.75rem; border: 1px solid #D9DFE6; background-color: #ffffff; padding: 0.625rem 0.875rem; font-size: 0.875rem; color: #0B1E36; outline: none; transition: all 0.2s; }
-.input:focus { border-color: #0B1E36; box-shadow: 0 0 0 2px rgba(11,30,54,0.2); }
-.lbl        { display: block; font-size: 11px; font-weight: 600; color: #1A3760; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
-.card       { background-color: #ffffff; border: 1px solid #D9DFE6; border-radius: 1rem; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); padding: 1.25rem; }
-.tag        { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.625rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 600; }
-.chip       { padding: 0.375rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
-.th         { padding: 0.75rem 1rem; text-align: left; font-size: 11px; font-weight: 700; color: #616D7C; text-transform: uppercase; letter-spacing: 0.05em; background-color: #F5F7F9; border-bottom: 1px solid #D9DFE6; }
-.td         { padding: 0.75rem 1rem; font-size: 0.875rem; color: #0B1E36; border-bottom: 1px solid #ECEFF3; }
-.sec-title  { font-size: 1rem; font-weight: 700; color: #0B1E36; letter-spacing: -0.025em; }
-.kicker     { font-size: 11px; font-weight: 700; color: #8894A3; text-transform: uppercase; letter-spacing: 0.1em; }
-.nav-item   { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.25rem; padding: 0.5rem 0.25rem; flex: 1 1 0%; min-width: 0; cursor: pointer; transition: color 0.2s; }
-</style>
+    .btn:disabled,
+    .btn-amber:disabled,
+    .btn-navy:disabled,
+    .btn-line:disabled,
+    .btn-ok:disabled,
+    .btn-bad:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
 
-<style>
-/* ---- Firma visual industrial ---- */
-.hazard { background: repeating-linear-gradient(-45deg,#FFB000 0 12px,#0B1E36 12px 24px); }
-.blueprint {
-  background-color:#fff;
-  background-image:linear-gradient(#e7edf3 1px,transparent 1px),linear-gradient(90deg,#e7edf3 1px,transparent 1px);
-  background-size:14px 14px;
-}
-/* Pulsos y estados */
-@keyframes livepulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.8)} }
-.xlive-dot { animation:livepulse 1.6s ease-in-out infinite; }
-@keyframes slideup { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-.anim-up { animation:slideup .25s ease both; }
-@keyframes fadein { from{opacity:0} to{opacity:1} }
-.anim-fade { animation:fadein .18s ease both; }
-/* Scrollbar sobrio */
-::-webkit-scrollbar{width:9px;height:9px}
-::-webkit-scrollbar-track{background:#ECEFF3}
-::-webkit-scrollbar-thumb{background:#B8C1CC;border-radius:6px}
-::-webkit-scrollbar-thumb:hover{background:#8894A3}
-/* Ocultar flechas de inputs numéricos */
-input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-input[type=number]{-moz-appearance:textfield}
-</style>
+    .btn-amber {
+      background-color: #FFB000;
+      color: #071426;
+      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    }
+
+    .btn-amber:hover:not(:disabled) {
+      background-color: #C98A00;
+    }
+
+    .btn-navy {
+      background-color: #12294A;
+      color: #ffffff;
+      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    }
+
+    .btn-navy:hover:not(:disabled) {
+      background-color: #1A3760;
+    }
+
+    .btn-line {
+      border: 1px solid #D9DFE6;
+      background-color: #ffffff;
+      color: #0B1E36;
+    }
+
+    .btn-line:hover:not(:disabled) {
+      background-color: #F5F7F9;
+    }
+
+    .btn-ok {
+      background-color: #059669;
+      color: #ffffff;
+      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    }
+
+    .btn-ok:hover:not(:disabled) {
+      background-color: #047857;
+    }
+
+    .btn-bad {
+      background-color: #dc2626;
+      color: #ffffff;
+      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    }
+
+    .btn-bad:hover:not(:disabled) {
+      background-color: #b91c1c;
+    }
+
+    .input {
+      width: 100%;
+      border-radius: 0.75rem;
+      border: 1px solid #D9DFE6;
+      background-color: #ffffff;
+      padding: 0.625rem 0.875rem;
+      font-size: 0.875rem;
+      color: #0B1E36;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .input:focus {
+      border-color: #0B1E36;
+      box-shadow: 0 0 0 2px rgba(11, 30, 54, 0.2);
+    }
+
+    .lbl {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #1A3760;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .card {
+      background-color: #ffffff;
+      border: 1px solid #D9DFE6;
+      border-radius: 1rem;
+      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      padding: 1.25rem;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.625rem;
+      border-radius: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .chip {
+      padding: 0.375rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .th {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: #616D7C;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background-color: #F5F7F9;
+      border-bottom: 1px solid #D9DFE6;
+    }
+
+    .td {
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      color: #0B1E36;
+      border-bottom: 1px solid #ECEFF3;
+    }
+
+    .sec-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #0B1E36;
+      letter-spacing: -0.025em;
+    }
+
+    .kicker {
+      font-size: 11px;
+      font-weight: 700;
+      color: #8894A3;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .nav-item {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      padding: 0.5rem 0.25rem;
+      flex: 1 1 0%;
+      min-width: 0;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+  </style>
+
+  <style>
+    /* ---- Firma visual industrial ---- */
+    .hazard {
+      background: repeating-linear-gradient(-45deg, #FFB000 0 12px, #0B1E36 12px 24px);
+    }
+
+    .blueprint {
+      background-color: #fff;
+      background-image: linear-gradient(#e7edf3 1px, transparent 1px), linear-gradient(90deg, #e7edf3 1px, transparent 1px);
+      background-size: 14px 14px;
+    }
+
+    /* Pulsos y estados */
+    @keyframes livepulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1)
+      }
+
+      50% {
+        opacity: .35;
+        transform: scale(.8)
+      }
+    }
+
+    .xlive-dot {
+      animation: livepulse 1.6s ease-in-out infinite;
+    }
+
+    @keyframes slideup {
+      from {
+        opacity: 0;
+        transform: translateY(10px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .anim-up {
+      animation: slideup .25s ease both;
+    }
+
+    @keyframes fadein {
+      from {
+        opacity: 0
+      }
+
+      to {
+        opacity: 1
+      }
+    }
+
+    .anim-fade {
+      animation: fadein .18s ease both;
+    }
+
+    /* Scrollbar sobrio */
+    ::-webkit-scrollbar {
+      width: 9px;
+      height: 9px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #ECEFF3
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #B8C1CC;
+      border-radius: 6px
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #8894A3
+    }
+
+    /* Ocultar flechas de inputs numéricos */
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0
+    }
+
+    input[type=number] {
+      -moz-appearance: textfield
+    }
+  </style>
 </head>
 
 <body class="bg-steel-100 font-body text-navy-900 antialiased">
 
-<!-- Defs SVG compartidos -->
-<svg width="0" height="0" class="absolute" aria-hidden="true">
-  <defs>
-    <pattern id="gridp" width="14" height="14" patternUnits="userSpaceOnUse">
-      <path d="M14 0H0V14" fill="none" stroke="#e7edf3" stroke-width="1"/>
-    </pattern>
-    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M0 0L10 5L0 10z" fill="#9A6B00"/>
-    </marker>
-  </defs>
-</svg>
+  <!-- Defs SVG compartidos -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <defs>
+      <pattern id="gridp" width="14" height="14" patternUnits="userSpaceOnUse">
+        <path d="M14 0H0V14" fill="none" stroke="#e7edf3" stroke-width="1" />
+      </pattern>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6"
+        orient="auto-start-reverse">
+        <path d="M0 0L10 5L0 10z" fill="#9A6B00" />
+      </marker>
+    </defs>
+  </svg>
 
-<div id="app"></div>
-<div id="modal-root"></div>
-<div id="toast-root" class="fixed top-4 right-4 left-4 sm:left-auto z-[90] flex flex-col gap-2 items-end pointer-events-none"></div>
+  <div id="app"></div>
+  <div id="modal-root"></div>
+  <div id="toast-root"
+    class="fixed top-4 right-4 left-4 sm:left-auto z-[90] flex flex-col gap-2 items-end pointer-events-none"></div>
 
-<script>
-'use strict';
+  <script>
+    'use strict';
 
-/* ============================ 1. CONFIGURACIÓN ============================ */
-const EMPRESA    = { name:'Truck Filters, c.a.', rif:'J-40127144-8', addr:'Av. Principal, Zona Industrial Municipal Norte, Galpón 4, Valencia — Edo. Carabobo', tel:'+58 241-500.22.44' };
+    /* ============================ 1. CONFIGURACIÓN ============================ */
+    const EMPRESA = { name: 'Truck Filters, c.a.', rif: 'J-40127144-8', addr: 'Av. Principal, Zona Industrial Municipal Norte, Galpón 4, Valencia — Edo. Carabobo', tel: '+58 241-500.22.44' };
 
-const DB_KEY     = 'tf_db_v2';
-const SESS_KEY   = 'tf_session_v2';
-const CART_PRE   = 'tf_cart_';
-const IVA_RATE   = 0.16;
-/* Contraseña administrativa OBLIGATORIA para acceder al panel de oficina */
-const ADMIN_USER = { pass:'XXTRUCK2025', name:'Administración', role:'admin' };
+    const DB_KEY = 'tf_db_v2';
+    const SESS_KEY = 'tf_session_v2';
+    const CART_PRE = 'tf_cart_';
+    const IVA_RATE = 0.16;
+    /* Contraseña administrativa OBLIGATORIA para acceder al panel de oficina */
+    const ADMIN_USER = { pass: 'XXTRUCK2025', name: 'Administración', role: 'admin' };
 
-const VOL_TIERS = [[50,8],[25,5],[10,3]];
-const CONDS = {
-  normal:  { l:'Ruta pavimentada (normal)',       f:1.0  },
-  severa:  { l:'Vía grave / mixta (severa)',      f:0.65 },
-  extrema: { l:'Alta polvorienta (extrema)',      f:0.45 }
-};
+    const VOL_TIERS = [[50, 8], [25, 5], [10, 3]];
+    const CONDS = {
+      normal: { l: 'Ruta pavimentada (normal)', f: 1.0 },
+      severa: { l: 'Vía grave / mixta (severa)', f: 0.65 },
+      extrema: { l: 'Alta polvorienta (extrema)', f: 0.45 }
+    };
 
-const TYPE_META = {
-  aceite:       { l:'Aceite',        icon:'fa-oil-can'   },
-  aire:         { l:'Aire',          icon:'fa-wind'      },
-  combustible:  { l:'Combustible',   icon:'fa-gas-pump'  },
-  'hidráulico': { l:'Hidráulico',    icon:'fa-gears'     },
-  cabina:       { l:'Cabina / A.C.', icon:'fa-snowflake' },
-  componente:   { l:'Componente',    icon:'fa-microchip' }
-};
+    const TYPE_META = {
+      aceite: { l: 'Aceite', icon: 'fa-oil-can' },
+      aire: { l: 'Aire', icon: 'fa-wind' },
+      combustible: { l: 'Combustible', icon: 'fa-gas-pump' },
+      'hidráulico': { l: 'Hidráulico', icon: 'fa-gears' },
+      cabina: { l: 'Cabina / A.C.', icon: 'fa-snowflake' },
+      componente: { l: 'Componente', icon: 'fa-microchip' }
+    };
 
-const ST = {
-  pendiente:  { l:'Pendiente',  chip:'bg-amber-50 text-amber-800 border-amber-300',       ic:'fa-hourglass-half' },
-  aprobado:   { l:'Aprobado',   chip:'bg-blue-50 text-blue-800 border-blue-300',          ic:'fa-circle-check'   },
-  despachado: { l:'Despachado', chip:'bg-emerald-50 text-emerald-800 border-emerald-300', ic:'fa-truck-fast'     },
-  rechazado:  { l:'Rechazado',  chip:'bg-red-50 text-red-700 border-red-300',             ic:'fa-circle-xmark'   }
-};
+    const ST = {
+      pendiente: { l: 'Pendiente', chip: 'bg-amber-50 text-amber-800 border-amber-300', ic: 'fa-hourglass-half' },
+      aprobado: { l: 'Aprobado', chip: 'bg-blue-50 text-blue-800 border-blue-300', ic: 'fa-circle-check' },
+      despachado: { l: 'Despachado', chip: 'bg-emerald-50 text-emerald-800 border-emerald-300', ic: 'fa-truck-fast' },
+      rechazado: { l: 'Rechazado', chip: 'bg-red-50 text-red-700 border-red-300', ic: 'fa-circle-xmark' }
+    };
 
-/* ============================ 2. CATÁLOGO BASE ============================ */
-const PRODUCTS = [
-  { code:'TF-55102', name:'Filtro de aceite giratorio HD', type:'aceite', price:12.50, stock:84, minVol:12, style:'spin', specs:{'Altura':'260 mm','Diám. exterior':'118 mm'}, app:['Cummins ISX / X15','Detroit DD15','Volvo D13'], cross:[['Fleetguard','LF9009'],['Donaldson','P55102'],['Baldwin','BD7309']] },
-  { code:'TF-33021', name:'Elemento de combustible 2 µm', type:'combustible', price:15.75, stock:62, minVol:10, style:'sep', specs:{'Altura':'195 mm','Separación':'98.5% @ 2 µm'}, app:['Cummins X15','Paccar MX-13','Mack MP8'], cross:[['Fleetguard','FS19764'],['Baldwin','PF7930']] },
-  { code:'TF-22108', name:'Filtro de aire primario radial', type:'aire', price:34.90, stock:28, minVol:4, style:'air', specs:{'Altura':'480 mm','Diám. ext./int.':'280 / 170 mm'}, app:['Kenworth T680 / T800','Mack Granite','Freightliner Cascadia'], cross:[['Donaldson','P608677'],['Fleetguard','AF26124']] },
-  { code:'TF-44105', name:'Filtro hidráulico de alta presión', type:'hidráulico', price:28.50, stock:19, minVol:4, style:'spin', specs:{'Altura':'230 mm','Presión máx.':'450 psi'}, app:['Sistemas volcadores','Grúas telescópicas','Caterpillar HD'], cross:[['Donaldson','P164378']] },
-  { code:'TF-88214', name:'Válvula reguladora de presión', type:'componente', price:31.00, stock:15, minVol:2, style:'elem', specs:{'Altura':'110 mm'}, app:['Circuitos neumáticos Bendix / Wabco'], cross:[['Bendix','K022105']] }
-];
+    /* ============================ 2. CATÁLOGO BASE ============================ */
+    const PRODUCTS = [
+      { code: 'TF-55102', name: 'Filtro de aceite giratorio HD', type: 'aceite', price: 12.50, stock: 84, minVol: 12, style: 'spin', specs: { 'Altura': '260 mm', 'Diám. exterior': '118 mm' }, app: ['Cummins ISX / X15', 'Detroit DD15', 'Volvo D13'], cross: [['Fleetguard', 'LF9009'], ['Donaldson', 'P55102'], ['Baldwin', 'BD7309']] },
+      { code: 'TF-33021', name: 'Elemento de combustible 2 µm', type: 'combustible', price: 15.75, stock: 62, minVol: 10, style: 'sep', specs: { 'Altura': '195 mm', 'Separación': '98.5% @ 2 µm' }, app: ['Cummins X15', 'Paccar MX-13', 'Mack MP8'], cross: [['Fleetguard', 'FS19764'], ['Baldwin', 'PF7930']] },
+      { code: 'TF-22108', name: 'Filtro de aire primario radial', type: 'aire', price: 34.90, stock: 28, minVol: 4, style: 'air', specs: { 'Altura': '480 mm', 'Diám. ext./int.': '280 / 170 mm' }, app: ['Kenworth T680 / T800', 'Mack Granite', 'Freightliner Cascadia'], cross: [['Donaldson', 'P608677'], ['Fleetguard', 'AF26124']] },
+      { code: 'TF-44105', name: 'Filtro hidráulico de alta presión', type: 'hidráulico', price: 28.50, stock: 19, minVol: 4, style: 'spin', specs: { 'Altura': '230 mm', 'Presión máx.': '450 psi' }, app: ['Sistemas volcadores', 'Grúas telescópicas', 'Caterpillar HD'], cross: [['Donaldson', 'P164378']] },
+      { code: 'TF-88214', name: 'Válvula reguladora de presión', type: 'componente', price: 31.00, stock: 15, minVol: 2, style: 'elem', specs: { 'Altura': '110 mm' }, app: ['Circuitos neumáticos Bendix / Wabco'], cross: [['Bendix', 'K022105']] }
+    ];
 
-const ENGINES = [
-  { id:'isx15', label:'Cummins ISX15 / X15 — tráctil', oil:'TF-55102', fuel:'TF-33021', airP:'TF-22108', iv:{oil:25000,fuel:20000,airP:60000} },
-  { id:'mx13',  label:'PACCAR MX-13 — Kenworth T680',  oil:'TF-55102', fuel:'TF-33021', airP:'TF-22108', iv:{oil:30000,fuel:20000,airP:60000} }
-];
+    const ENGINES = [
+      { id: 'isx15', label: 'Cummins ISX15 / X15 — tráctil', oil: 'TF-55102', fuel: 'TF-33021', airP: 'TF-22108', iv: { oil: 25000, fuel: 20000, airP: 60000 } },
+      { id: 'mx13', label: 'PACCAR MX-13 — Kenworth T680', oil: 'TF-55102', fuel: 'TF-33021', airP: 'TF-22108', iv: { oil: 30000, fuel: 20000, airP: 60000 } }
+    ];
 
-/* ============================ 3. UTILIDADES ============================ */
-const $      = s => document.querySelector(s);
-const round2 = v => Math.round(v * 100) / 100;
-const money  = n => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
-const esc    = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
-const fD     = ts => new Date(ts).toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit', year:'numeric' });
-const fT     = ts => new Date(ts).toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
-const fDT    = ts => fD(ts) + ' · ' + fT(ts);
-const t0     = () => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); };
-const uid    = () => 'P' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-const volDisc = q => { for (const [min, d] of VOL_TIERS) if (q >= min) return d; return 0; };
-const RIF_OK = r => /^[JVGPE]-\d{8}-\d(\/\d)?$/.test(String(r).trim().toUpperCase());
-const initialsOf = n => String(n || '').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
-const stChip = st => { const s = ST[st] || ST.pendiente; return `<span class="tag border ${s.chip}"><i class="fa-solid ${s.ic}"></i>${s.l}</span>`; };
+    /* ============================ 3. UTILIDADES ============================ */
+    const $ = s => document.querySelector(s);
+    const round2 = v => Math.round(v * 100) / 100;
+    const money = n => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+    const fD = ts => new Date(ts).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const fT = ts => new Date(ts).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+    const fDT = ts => fD(ts) + ' · ' + fT(ts);
+    const t0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const uid = () => 'P' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const volDisc = q => { for (const [min, d] of VOL_TIERS) if (q >= min) return d; return 0; };
+    const RIF_OK = r => /^[JVGPE]-\d{8}-\d(\/\d)?$/.test(String(r).trim().toUpperCase());
+    const initialsOf = n => String(n || '').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const stChip = st => { const s = ST[st] || ST.pendiente; return `<span class="tag border ${s.chip}"><i class="fa-solid ${s.ic}"></i>${s.l}</span>`; };
 
-const FILTER_IMG_FALLBACK = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="#EEF3F9"/><g fill="none" stroke="#B8C1CC" stroke-width="3"><rect x="270" y="70" width="100" height="150" rx="10"/><line x1="270" y1="102" x2="370" y2="102"/><line x1="270" y1="120" x2="370" y2="120"/><rect x="295" y="220" width="50" height="22"/></g><text x="320" y="300" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#8894A3">Fotografía no disponible</text><text x="320" y="326" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#B8C1CC">assets/img/filters/</text></svg>`
-);
+    const FILTER_IMG_FALLBACK = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="#EEF3F9"/><g fill="none" stroke="#B8C1CC" stroke-width="3"><rect x="270" y="70" width="100" height="150" rx="10"/><line x1="270" y1="102" x2="370" y2="102"/><line x1="270" y1="120" x2="370" y2="120"/><rect x="295" y="220" width="50" height="22"/></g><text x="320" y="300" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#8894A3">Fotografía no disponible</text><text x="320" y="326" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#B8C1CC">assets/img/filters/</text></svg>`
+    );
 
-function toast(msg, type='info', ms=3400) {
-  const root = $('#toast-root'); if (!root) return;
-  const el = document.createElement('div');
-  el.className = `max-w-sm w-full bg-white border-l-4 rounded-xl shadow-lg p-3 text-xs font-medium pointer-events-auto transition-all duration-300 translate-y-2 opacity-0 ${
-    type === 'ok'   ? 'border-emerald-500 text-navy-900' :
-    type === 'warn' ? 'border-amber-500 text-navy-900'  :
-    type === 'bad'  ? 'border-red-500 text-navy-900'    : 'border-navy-900 text-navy-900'
-  }`;
-  el.innerHTML = msg;
-  root.appendChild(el);
-  requestAnimationFrame(() => el.classList.remove('translate-y-2', 'opacity-0'));
-  setTimeout(() => {
-    el.classList.add('translate-y-2', 'opacity-0');
-    setTimeout(() => el.remove(), 300);
-  }, ms);
-}
-
-/* ============================ 3.5 CAPA DE NUBE & SINCRONIZACIÓN ============================ */
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAT6BqMzttmKTXHg0VF4UN-K7V-7QaafyE",
-  authDomain: "truck-filters.firebaseapp.com",
-  projectId: "truck-filters",
-  storageBucket: "truck-filters.firebasestorage.app",
-  messagingSenderId: "45278506796",
-  appId: "1:45278506796:web:89a0b69c15e71872930689"
-};
-
-const CLOUD_DOC   = 'truckfilters/state';
-const CLIENT_ID   = 'C' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-let   FS          = null;
-let   cloudReady  = false;
-let   cloudDirty  = false;
-let   cloudTimer  = null;
-let   lastCloudRev = 0;
-let   applyingRemote = false;
-let   cloudStatus = 'off';
-
-function setCloudStatus(s) { cloudStatus = s; updateConnChip(); }
-
-function cloudInit() {
-  if (cloudReady) return;
-  if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.startsWith('PEGA_')) { setCloudStatus('cfg'); return; }
-  if (typeof firebase === 'undefined') { setCloudStatus('off'); return; }
-  try {
-    firebase.initializeApp(FIREBASE_CONFIG);
-    FS = firebase.firestore();
-    FS.enablePersistence({ synchronizeTabs: true }).catch(() => {});
-    cloudReady = true;
-    cloudSubscribe();
-    cloudPull();
-  } catch (e) {
-    console.error('cloudInit:', e);
-    setCloudStatus('off');
-  }
-}
-
-const cloudRef = () => (cloudReady && FS) ? FS.doc(CLOUD_DOC) : null;
-
-function cloudPull() {
-  const r = cloudRef(); if (!r) return;
-  setCloudStatus('sync');
-  r.get().then(snap => {
-    if (snap.exists) applyRemote(snap.data());
-    else queueCloudSync(0);
-    setCloudStatus('ok');
-  }).catch(err => { console.error('cloudPull:', err); setCloudStatus('off'); });
-}
-
-function cloudSubscribe() {
-  const r = cloudRef(); if (!r) return;
-  r.onSnapshot(snap => {
-    if (!snap.exists) return;
-    const data = snap.data();
-    if (data.writer === CLIENT_ID) return;
-    if ((data.rev || 0) <= lastCloudRev) return;
-    applyRemote(data);
-  }, err => { console.error('onSnapshot:', err); setCloudStatus('off'); });
-}
-
-function mergeRemote(remote, local) {
-  const m = JSON.parse(JSON.stringify(local));
-  m.products = Array.isArray(remote.products) ? remote.products : m.products;
-  m.sellers  = Array.isArray(remote.sellers)  ? remote.sellers  : m.sellers;
-  m.counter  = Math.max(m.counter || 1, remote.counter || 1);
-
-  const byId = new Map((m.orders || []).map(o => [o.id, o]));
-  (remote.orders || []).forEach(o => {
-    const cur = byId.get(o.id);
-    if (!cur) byId.set(o.id, o);
-    else {
-      const curScore = (cur.history || []).length + (cur.ts || 0) / 1e15;
-      const remScore = (o.history || []).length + (o.ts || 0) / 1e15;
-      if (remScore >= curScore) byId.set(o.id, o);
+    function toast(msg, type = 'info', ms = 3400) {
+      const root = $('#toast-root'); if (!root) return;
+      const el = document.createElement('div');
+      el.className = `max-w-sm w-full bg-white border-l-4 rounded-xl shadow-lg p-3 text-xs font-medium pointer-events-auto transition-all duration-300 translate-y-2 opacity-0 ${type === 'ok' ? 'border-emerald-500 text-navy-900' :
+          type === 'warn' ? 'border-amber-500 text-navy-900' :
+            type === 'bad' ? 'border-red-500 text-navy-900' : 'border-navy-900 text-navy-900'
+        }`;
+      el.innerHTML = msg;
+      root.appendChild(el);
+      requestAnimationFrame(() => el.classList.remove('translate-y-2', 'opacity-0'));
+      setTimeout(() => {
+        el.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => el.remove(), 300);
+      }, ms);
     }
-  });
-  m.orders = [...byId.values()].sort((a, b) => b.ts - a.ts);
-  m.jornada = { ...(m.jornada || {}), ...(remote.jornada || {}) };
 
-  const seen = new Map();
-  [...(m.activity || []), ...(remote.activity || [])].forEach(a => { if (a) seen.set(a.t + '|' + a.ts, a); });
-  m.activity = [...seen.values()].sort((a, b) => b.ts - a.ts).slice(0, 30);
-  return m;
-}
+    /* ============================ 3.5 CAPA DE NUBE & SINCRONIZACIÓN ============================ */
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyAT6BqMzttmKTXHg0VF4UN-K7V-7QaafyE",
+      authDomain: "truck-filters.firebaseapp.com",
+      projectId: "truck-filters",
+      storageBucket: "truck-filters.firebasestorage.app",
+      messagingSenderId: "45278506796",
+      appId: "1:45278506796:web:89a0b69c15e71872930689"
+    };
 
-function applyRemote(data) {
-  if (!data || applyingRemote) return;
-  applyingRemote = true;
-  try {
-    lastCloudRev = Math.max(lastCloudRev, data.rev || 0);
-    if (data.db) db = mergeRemote(data.db, db);
-    if (Array.isArray(data.carsev) && !cloudDirty) saveFiltersSilent(data.carsev);
-    migrateDB();
-    localStorage.setItem(DB_KEY, JSON.stringify(db));
-    renderCurrent();
-    setCloudStatus('ok');
-  } catch (err) {
-    console.error('applyRemote:', err);
-  } finally {
-    applyingRemote = false;
-  }
-}
+    const CLOUD_DOC = 'truckfilters/state';
+    const CLIENT_ID = 'C' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    let FS = null;
+    let cloudReady = false;
+    let cloudDirty = false;
+    let cloudTimer = null;
+    let lastCloudRev = 0;
+    let applyingRemote = false;
+    let cloudStatus = 'off';
 
-function queueCloudSync(delay = 1200) {
-  cloudDirty = true;
-  if (!cloudReady) return;
-  clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(cloudPush, delay);
-}
+    function setCloudStatus(s) { cloudStatus = s; updateConnChip(); }
 
-function cloudPush() {
-  const r = cloudRef(); if (!r || !cloudDirty) return;
-  cloudDirty = false;
-  setCloudStatus('sync');
-  const rev = Date.now();
-  lastCloudRev = rev;
-  r.set({ db, carsev: getFilters(), rev, writer: CLIENT_ID, ts: Date.now() })
-    .then(() => setCloudStatus('ok'))
-    .catch(err => { console.error('cloudPush:', err); cloudDirty = true; setCloudStatus('off'); });
-}
-
-function cloudSyncNow() {
-  if (!cloudReady) { toast('Nube no disponible. Verifica la configuración de Firebase.', 'warn'); return; }
-  cloudDirty = true; clearTimeout(cloudTimer); cloudPush();
-  toast('Sincronizando con la nube…', 'info');
-}
-
-function cloudInfo() {
-  if (!navigator.onLine) return { ic:'fa-plug-circle-xmark', cls:'bg-red-100 text-red-700', label:'Sin conexión — trabajando en modo local', btn:false };
-  if (cloudStatus === 'cfg') return { ic:'fa-triangle-exclamation', cls:'bg-amber-100 text-amber-700', label:'Firebase sin configurar', btn:false };
-  if (cloudStatus === 'sync') return { ic:'fa-cloud-arrow-up', cls:'bg-blue-100 text-blue-700', label:'Sincronizando…', btn:true };
-  if (cloudStatus === 'ok')   return { ic:'fa-cloud', cls:'bg-emerald-100 text-emerald-700', label:'Conectado a Firebase', btn:true };
-  return { ic:'fa-cloud-arrow-down', cls:'bg-steel-100 text-steel-600', label:'Solo local', btn:true };
-}
-
-/* Sincronización instantánea entre pestañas del navegador */
-function broadcastDBChange() {
-  try {
-    if (window.BroadcastChannel) {
-      const bc = new BroadcastChannel('tf_sync_channel');
-      bc.postMessage({ type: 'db_updated', ts: Date.now() });
-      bc.close();
+    function cloudInit() {
+      if (cloudReady) return;
+      if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.startsWith('PEGA_')) { setCloudStatus('cfg'); return; }
+      if (typeof firebase === 'undefined') { setCloudStatus('off'); return; }
+      try {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        FS = firebase.firestore();
+        FS.enablePersistence({ synchronizeTabs: true }).catch(() => { });
+        cloudReady = true;
+        cloudSubscribe();
+        cloudPull();
+      } catch (e) {
+        console.error('cloudInit:', e);
+        setCloudStatus('off');
+      }
     }
-  } catch(e) {}
-}
 
-try {
-  if (window.BroadcastChannel) {
-    const listenerBc = new BroadcastChannel('tf_sync_channel');
-    listenerBc.onmessage = (e) => {
-      if (e.data && e.data.type === 'db_updated') {
+    const cloudRef = () => (cloudReady && FS) ? FS.doc(CLOUD_DOC) : null;
+
+    function cloudPull() {
+      const r = cloudRef(); if (!r) return;
+      setCloudStatus('sync');
+      r.get().then(snap => {
+        if (snap.exists) applyRemote(snap.data());
+        else queueCloudSync(0);
+        setCloudStatus('ok');
+      }).catch(err => { console.error('cloudPull:', err); setCloudStatus('off'); });
+    }
+
+    function cloudSubscribe() {
+      const r = cloudRef(); if (!r) return;
+      r.onSnapshot(snap => {
+        if (!snap.exists) return;
+        const data = snap.data();
+        if (data.writer === CLIENT_ID) return;
+        if ((data.rev || 0) <= lastCloudRev) return;
+        applyRemote(data);
+      }, err => { console.error('onSnapshot:', err); setCloudStatus('off'); });
+    }
+
+    function mergeRemote(remote, local) {
+      const m = JSON.parse(JSON.stringify(local));
+      m.products = Array.isArray(remote.products) ? remote.products : m.products;
+      m.sellers = Array.isArray(remote.sellers) ? remote.sellers : m.sellers;
+      m.counter = Math.max(m.counter || 1, remote.counter || 1);
+
+      const byId = new Map((m.orders || []).map(o => [o.id, o]));
+      (remote.orders || []).forEach(o => {
+        const cur = byId.get(o.id);
+        if (!cur) byId.set(o.id, o);
+        else {
+          const curScore = (cur.history || []).length + (cur.ts || 0) / 1e15;
+          const remScore = (o.history || []).length + (o.ts || 0) / 1e15;
+          if (remScore >= curScore) byId.set(o.id, o);
+        }
+      });
+      m.orders = [...byId.values()].sort((a, b) => b.ts - a.ts);
+      m.jornada = { ...(m.jornada || {}), ...(remote.jornada || {}) };
+
+      const seen = new Map();
+      [...(m.activity || []), ...(remote.activity || [])].forEach(a => { if (a) seen.set(a.t + '|' + a.ts, a); });
+      m.activity = [...seen.values()].sort((a, b) => b.ts - a.ts).slice(0, 30);
+      return m;
+    }
+
+    function applyRemote(data) {
+      if (!data || applyingRemote) return;
+      applyingRemote = true;
+      try {
+        lastCloudRev = Math.max(lastCloudRev, data.rev || 0);
+        if (data.db) db = mergeRemote(data.db, db);
+        if (Array.isArray(data.carsev) && !cloudDirty) saveFiltersSilent(data.carsev);
+        migrateDB();
+        localStorage.setItem(DB_KEY, JSON.stringify(db));
+        renderCurrent();
+        setCloudStatus('ok');
+      } catch (err) {
+        console.error('applyRemote:', err);
+      } finally {
+        applyingRemote = false;
+      }
+    }
+
+    function queueCloudSync(delay = 1200) {
+      cloudDirty = true;
+      if (!cloudReady) return;
+      clearTimeout(cloudTimer);
+      cloudTimer = setTimeout(cloudPush, delay);
+    }
+
+    function cloudPush() {
+      const r = cloudRef(); if (!r || !cloudDirty) return;
+      cloudDirty = false;
+      setCloudStatus('sync');
+      const rev = Date.now();
+      lastCloudRev = rev;
+      r.set({ db, carsev: getFilters(), rev, writer: CLIENT_ID, ts: Date.now() })
+        .then(() => setCloudStatus('ok'))
+        .catch(err => { console.error('cloudPush:', err); cloudDirty = true; setCloudStatus('off'); });
+    }
+
+    function cloudSyncNow() {
+      if (!cloudReady) { toast('Nube no disponible. Verifica la configuración de Firebase.', 'warn'); return; }
+      cloudDirty = true; clearTimeout(cloudTimer); cloudPush();
+      toast('Sincronizando con la nube…', 'info');
+    }
+
+    function cloudInfo() {
+      if (!navigator.onLine) return { ic: 'fa-plug-circle-xmark', cls: 'bg-red-100 text-red-700', label: 'Sin conexión — trabajando en modo local', btn: false };
+      if (cloudStatus === 'cfg') return { ic: 'fa-triangle-exclamation', cls: 'bg-amber-100 text-amber-700', label: 'Firebase sin configurar', btn: false };
+      if (cloudStatus === 'sync') return { ic: 'fa-cloud-arrow-up', cls: 'bg-blue-100 text-blue-700', label: 'Sincronizando…', btn: true };
+      if (cloudStatus === 'ok') return { ic: 'fa-cloud', cls: 'bg-emerald-100 text-emerald-700', label: 'Conectado a Firebase', btn: true };
+      return { ic: 'fa-cloud-arrow-down', cls: 'bg-steel-100 text-steel-600', label: 'Solo local', btn: true };
+    }
+
+    /* Sincronización instantánea entre pestañas del navegador */
+    function broadcastDBChange() {
+      try {
+        if (window.BroadcastChannel) {
+          const bc = new BroadcastChannel('tf_sync_channel');
+          bc.postMessage({ type: 'db_updated', ts: Date.now() });
+          bc.close();
+        }
+      } catch (e) { }
+    }
+
+    try {
+      if (window.BroadcastChannel) {
+        const listenerBc = new BroadcastChannel('tf_sync_channel');
+        listenerBc.onmessage = (e) => {
+          if (e.data && e.data.type === 'db_updated') {
+            loadDB();
+            if (!session) {
+              const curPass = $('#login-pass')?.value;
+              const curName = $('#login-name')?.value;
+              const curRole = $('#login-role')?.value;
+              renderLogin();
+              if ($('#login-role') && curRole) { $('#login-role').value = curRole; onLoginRoleChange(); }
+              if ($('#login-pass') && curPass) $('#login-pass').value = curPass;
+              if ($('#login-name') && curName) $('#login-name').value = curName;
+            } else {
+              renderCurrent();
+            }
+          }
+        };
+      }
+    } catch (e) { }
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === DB_KEY) {
         loadDB();
         if (!session) {
           const curPass = $('#login-pass')?.value;
@@ -367,72 +607,53 @@ try {
           renderCurrent();
         }
       }
-    };
-  }
-} catch(e) {}
+    });
 
-window.addEventListener('storage', (e) => {
-  if (e.key === DB_KEY) {
-    loadDB();
-    if (!session) {
-      const curPass = $('#login-pass')?.value;
-      const curName = $('#login-name')?.value;
-      const curRole = $('#login-role')?.value;
-      renderLogin();
-      if ($('#login-role') && curRole) { $('#login-role').value = curRole; onLoginRoleChange(); }
-      if ($('#login-pass') && curPass) $('#login-pass').value = curPass;
-      if ($('#login-name') && curName) $('#login-name').value = curName;
-    } else {
-      renderCurrent();
-    }
-  }
-});
+    /* ============================ 4. MODALES ============================ */
+    let pendingConfirm = null;
+    let modalPrevFocus = null;
+    const modalOpen = () => $('#modal-root').childElementCount > 0;
 
-/* ============================ 4. MODALES ============================ */
-let pendingConfirm = null;
-let modalPrevFocus = null;
-const modalOpen = () => $('#modal-root').childElementCount > 0;
-
-function openModal(html, wide=false) {
-  const root = $('#modal-root');
-  modalPrevFocus = document.activeElement;
-  pendingConfirm = null;
-  root.innerHTML = `
+    function openModal(html, wide = false) {
+      const root = $('#modal-root');
+      modalPrevFocus = document.activeElement;
+      pendingConfirm = null;
+      root.innerHTML = `
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-900/60 backdrop-blur-sm anim-fade" data-close="1">
       <div class="bg-white rounded-2xl shadow-2xl w-full ${wide ? 'max-w-4xl' : 'max-w-lg'} overflow-hidden border border-steel-200 flex flex-col max-h-[90vh]" data-modal-panel="1" tabindex="-1">
         ${html}
       </div>
     </div>`;
-  document.body.style.overflow = 'hidden';
-  requestAnimationFrame(() => {
-    const f = root.querySelector('[data-modal-panel="1"]');
-    if (f) { try { f.focus({ preventScroll:true }); } catch(e){} }
-  });
-}
+      document.body.style.overflow = 'hidden';
+      requestAnimationFrame(() => {
+        const f = root.querySelector('[data-modal-panel="1"]');
+        if (f) { try { f.focus({ preventScroll: true }); } catch (e) { } }
+      });
+    }
 
-function closeModal() {
-  const root = $('#modal-root');
-  if (root && root.childElementCount) root.innerHTML = '';
-  pendingConfirm = null;
-  if (document.body.style.overflow === 'hidden') document.body.style.overflow = '';
-  if (modalPrevFocus && document.contains(modalPrevFocus)) {
-    try { modalPrevFocus.focus({ preventScroll:true }); } catch(e){}
-  }
-  modalPrevFocus = null;
-}
+    function closeModal() {
+      const root = $('#modal-root');
+      if (root && root.childElementCount) root.innerHTML = '';
+      pendingConfirm = null;
+      if (document.body.style.overflow === 'hidden') document.body.style.overflow = '';
+      if (modalPrevFocus && document.contains(modalPrevFocus)) {
+        try { modalPrevFocus.focus({ preventScroll: true }); } catch (e) { }
+      }
+      modalPrevFocus = null;
+    }
 
-document.addEventListener('click', e => {
-  if (!modalOpen() || !(e.target instanceof Element)) return;
-  if (e.target.closest('[data-close]')) { e.preventDefault(); closeModal(); return; }
-  if (!e.target.closest('[data-modal-panel]')) closeModal();
-});
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && modalOpen()) { e.preventDefault(); closeModal(); }
-});
+    document.addEventListener('click', e => {
+      if (!modalOpen() || !(e.target instanceof Element)) return;
+      if (e.target.closest('[data-close]')) { e.preventDefault(); closeModal(); return; }
+      if (!e.target.closest('[data-modal-panel]')) closeModal();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && modalOpen()) { e.preventDefault(); closeModal(); }
+    });
 
-function confirmDialog(title, msg, okLabel, onOk, danger=true) {
-  pendingConfirm = typeof onOk === 'function' ? onOk : null;
-  openModal(`
+    function confirmDialog(title, msg, okLabel, onOk, danger = true) {
+      pendingConfirm = typeof onOk === 'function' ? onOk : null;
+      openModal(`
     <div class="p-6 space-y-4">
       <h3 class="text-base font-bold text-navy-900">${esc(title)}</h3>
       <p class="text-sm text-steel-600">${msg}</p>
@@ -441,375 +662,384 @@ function confirmDialog(title, msg, okLabel, onOk, danger=true) {
         <button onclick="runConfirm()" class="px-4 py-2 text-xs rounded-xl font-bold text-white ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-navy-900 hover:bg-navy-800'}">${esc(okLabel)}</button>
       </div>
     </div>`);
-}
+    }
 
-function runConfirm() {
-  const fn = pendingConfirm;
-  closeModal();
-  if (fn) { try { fn(); } catch(err) { console.error(err); toast('Ocurrió un error al ejecutar la acción.', 'bad'); } }
-}
+    function runConfirm() {
+      const fn = pendingConfirm;
+      closeModal();
+      if (fn) { try { fn(); } catch (err) { console.error(err); toast('Ocurrió un error al ejecutar la acción.', 'bad'); } }
+    }
 
-/* ============================ 5. DIBUJOS TÉCNICOS SVG ============================ */
-function logoSVG(size=40) {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+    /* ============================ 5. DIBUJOS TÉCNICOS SVG ============================ */
+    function logoSVG(size = 40) {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" aria-hidden="true">
     <path d="M32 3 L57 17 V47 L32 61 L7 47 V17 Z" fill="#0B1E36" stroke="#FFB000" stroke-width="2.5"/>
     <text x="32" y="36" text-anchor="middle" font-family="Oswald,sans-serif" font-weight="700" font-size="19" fill="#FFB000">TF</text>
     <text x="32" y="52" text-anchor="middle" font-family="Barlow,sans-serif" font-weight="600" font-size="6" fill="#fff" letter-spacing="2">FILTERS</text>
   </svg>`;
-}
+    }
 
-const dimH = (x1, x2, y, label) => `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#9A6B00" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="${(x1+x2)/2}" y="${y-4}" text-anchor="middle" font-size="9" fill="#9A6B00" font-family="Barlow,sans-serif" font-weight="600">${label}</text>`;
-const dimV = (y1, y2, x, label) => `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#9A6B00" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="${x+6}" y="${(y1+y2)/2+3}" font-size="9" fill="#9A6B00" font-family="Barlow,sans-serif" font-weight="600">${label}</text>`;
-const L  = 'stroke="#2C4562" stroke-width="1.6" fill="none" stroke-linejoin="round"';
-const LF = f => `stroke="#2C4562" stroke-width="1.6" fill="${f}" stroke-linejoin="round"`;
+    const dimH = (x1, x2, y, label) => `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#9A6B00" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="${(x1 + x2) / 2}" y="${y - 4}" text-anchor="middle" font-size="9" fill="#9A6B00" font-family="Barlow,sans-serif" font-weight="600">${label}</text>`;
+    const dimV = (y1, y2, x, label) => `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#9A6B00" stroke-width="1" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="${x + 6}" y="${(y1 + y2) / 2 + 3}" font-size="9" fill="#9A6B00" font-family="Barlow,sans-serif" font-weight="600">${label}</text>`;
+    const L = 'stroke="#2C4562" stroke-width="1.6" fill="none" stroke-linejoin="round"';
+    const LF = f => `stroke="#2C4562" stroke-width="1.6" fill="${f}" stroke-linejoin="round"`;
 
-function techSVG(p) {
-  const S = p.specs || {}; const h = S['Altura'] || ''; let body = '';
-  if (p.style === 'spin') {
-    body = `<rect x="80" y="30" width="60" height="76" rx="6" ${LF('#EDF1F5')}/>
+    function techSVG(p) {
+      const S = p.specs || {}; const h = S['Altura'] || ''; let body = '';
+      if (p.style === 'spin') {
+        body = `<rect x="80" y="30" width="60" height="76" rx="6" ${LF('#EDF1F5')}/>
       <line x1="80" y1="42" x2="140" y2="42" ${L}/><line x1="80" y1="50" x2="140" y2="50" ${L}/>
       <rect x="92" y="106" width="36" height="12" ${LF('#E2E8EE')}/>
       <line x1="70" y1="118" x2="150" y2="118" ${L}/>
       ${S['Diám. exterior'] ? dimH(80, 140, 22, S['Diám. exterior']) : ''}${h ? dimV(30, 118, 158, h) : ''}`;
-  } else if (p.style === 'air') {
-    const dAir = S['Diám. ext./int.'] ? S['Diám. ext./int.'].split('/')[0].trim() + ' Ø' : '';
-    body = `<rect x="94" y="14" width="32" height="18" rx="2" ${LF('#E2E8EE')}/>
+      } else if (p.style === 'air') {
+        const dAir = S['Diám. ext./int.'] ? S['Diám. ext./int.'].split('/')[0].trim() + ' Ø' : '';
+        body = `<rect x="94" y="14" width="32" height="18" rx="2" ${LF('#E2E8EE')}/>
       <rect x="66" y="32" width="88" height="92" rx="42" ${LF('#fff')}/>
       <path d="M70 62 Q110 74 150 62" ${L}/><path d="M70 92 Q110 104 150 92" ${L}/>
       ${dAir ? dimH(66, 154, 132, dAir) : ''}${h ? dimV(14, 124, 162, h) : ''}`;
-  } else if (p.style === 'sep') {
-    body = `<rect x="80" y="18" width="60" height="40" rx="4" ${LF('#E2E8EE')}/>
+      } else if (p.style === 'sep') {
+        body = `<rect x="80" y="18" width="60" height="40" rx="4" ${LF('#E2E8EE')}/>
       <path d="M84 58 L136 58 L128 116 L92 116 Z" ${LF('rgba(232,240,246,.6)')}/>
       ${h ? dimV(18, 126, 162, h) : ''}${S['Separación'] ? `<text x="110" y="140" text-anchor="middle" font-family="monospace" font-size="7.5" fill="#616D7C">${S['Separación']}</text>` : ''}`;
-  } else {
-    body = `<rect x="82" y="22" width="56" height="100" rx="4" ${LF('#fff')}/>
+      } else {
+        body = `<rect x="82" y="22" width="56" height="100" rx="4" ${LF('#fff')}/>
       <line x1="88" y1="30" x2="132" y2="44" ${L}/><line x1="88" y1="48" x2="132" y2="62" ${L}/>
       ${S['Diám. exterior'] ? dimH(82, 138, 14, S['Diám. exterior']) : ''}${h ? dimV(22, 122, 158, h) : ''}`;
-  }
-  return `<svg viewBox="0 0 220 150" class="h-32 w-auto max-w-[85%]" aria-hidden="true">
+      }
+      return `<svg viewBox="0 0 220 150" class="h-32 w-auto max-w-[85%]" aria-hidden="true">
     <rect x="0" y="0" width="220" height="150" fill="url(#gridp)" stroke="none"/>
     ${body}
   </svg>`;
-}
+    }
 
-/* ============================ 6. CAPA DE DATOS ============================ */
-function seedDB() {
-    return {
+    /* ============================ 6. CAPA DE DATOS ============================ */
+    function seedDB() {
+      return {
         products: [],
         orders: [],
         counter: 1,
         sellers: [],
         jornada: {},
         activity: []
-    };
-}
+      };
+    }
 
-let db = null;
+    let db = null;
 
-function migrateDB() {
-    if (!db) return;
-    if (!Array.isArray(db.sellers)) {
+    function migrateDB() {
+      if (!db) return;
+      if (!Array.isArray(db.sellers)) {
         db.sellers = [];
-    } else {
+      } else {
         /* FIX: antes era { active: calc, ...s } → el spread sobrescribía el cálculo.
            Ahora el valor normalizado SIEMPRE gana: false/'false'/0 → inactivo; ausente/null → activo. */
         db.sellers = db.sellers.map(s => ({
-            ...s,
-            active: (s.active !== false && s.active !== 'false' && s.active !== 0)
+          ...s,
+          active: (s.active !== false && s.active !== 'false' && s.active !== 0)
         }));
+      }
+      if (!Array.isArray(db.activity)) db.activity = [];
+      if (typeof db.jornada !== 'object' || !db.jornada) db.jornada = {};
+      if (!Array.isArray(db.products)) db.products = [];
+      if (!Array.isArray(db.orders)) db.orders = [];
+      if (typeof db.counter !== 'number') db.counter = 1;
     }
-    if (!Array.isArray(db.activity)) db.activity = [];
-    if (typeof db.jornada !== 'object' || !db.jornada) db.jornada = {};
-    if (!Array.isArray(db.products)) db.products = [];
-    if (!Array.isArray(db.orders)) db.orders = [];
-    if (typeof db.counter !== 'number') db.counter = 1;
-}
 
-function loadDB() {
-  try {
-    const raw = localStorage.getItem(DB_KEY);
-    if (raw) db = JSON.parse(raw);
-  } catch(e) {
-    db = null;
-  }
-  if (!db || !Array.isArray(db.products) || !Array.isArray(db.orders)) {
-    db = seedDB();
-  }
-  migrateDB();
-}
+    function loadDB() {
+      try {
+        const raw = localStorage.getItem(DB_KEY);
+        if (raw) db = JSON.parse(raw);
+      } catch (e) {
+        db = null;
+      }
+      if (!db || !Array.isArray(db.products) || !Array.isArray(db.orders)) {
+        db = seedDB();
+      }
+      migrateDB();
+    }
 
-function saveDB() {
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
-  broadcastDBChange();
-  if (!applyingRemote) queueCloudSync();
-}
+    function saveDB() {
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
+      broadcastDBChange();
+      if (!applyingRemote) queueCloudSync();
+    }
 
-loadDB();
+    loadDB();
 
-const prod = code => (db && db.products ? db.products : PRODUCTS).find(p => p.code === code);
-function getSellers() {
-  return (db && db.sellers) ? db.sellers : [];
-}
+    const prod = code => (db && db.products ? db.products : PRODUCTS).find(p => p.code === code);
+    function getSellers() {
+      return (db && db.sellers) ? db.sellers : [];
+    }
 
-/* ---- Fuente única de verdad: un solo criterio de "Activo" para... */
-const isSellerActive = s => !!s && s.active !== false && s.active !== 'false';
-const activeSellers = () => getSellers().filter(isSellerActive);
-const sellerById = id => getSellers().find(s => s.id === id || s.name === id);
+    /* ---- Fuente única de verdad: un solo criterio de "Activo" para... */
+    const isSellerActive = s => !!s && s.active !== false && s.active !== 'false';
+    const activeSellers = () => getSellers().filter(isSellerActive);
+    const sellerById = id => getSellers().find(s => s.id === id || s.name === id);
 
-function nextSellerId() {
-  let max = 0;
-  getSellers().forEach(s => { const m = /^VEND-(\d+)$/.exec(s.id || ''); if (m) max = Math.max(max, parseInt(m[1], 10)); });
-  return 'VEND-' + String(max + 1).padStart(3, '0');
-}
+    function nextSellerId() {
+      let max = 0;
+      getSellers().forEach(s => { const m = /^VEND-(\d+)$/.exec(s.id || ''); if (m) max = Math.max(max, parseInt(m[1], 10)); });
+      return 'VEND-' + String(max + 1).padStart(3, '0');
+    }
 
-function logActivity(ic, t) {
-  if (!db.activity) db.activity = [];
-  db.activity.unshift({ ts: Date.now(), ic, t });
-  db.activity = db.activity.slice(0, 30);
-}
+    function logActivity(ic, t) {
+      if (!db.activity) db.activity = [];
+      db.activity.unshift({ ts: Date.now(), ic, t });
+      db.activity = db.activity.slice(0, 30);
+    }
 
 
-/* ============================ 7. ESTADO GLOBAL ============================ */
-let session = null;
-try { session = JSON.parse(sessionStorage.getItem(SESS_KEY) || 'null'); } catch(e){ session = null; }
+    /* ============================ 7. ESTADO GLOBAL ============================ */
+    let session = null;
+    try { session = JSON.parse(sessionStorage.getItem(SESS_KEY) || 'null'); } catch (e) { session = null; }
 
-let cart = [];
-const ui = {
-  view: 'catalog',
-  catQ: '', catType: 'todos',
-  tool: 'plan', toolQ: '', planEngine: 'isx15', planCond: 'normal', planKm: 8000,
-  filterQ: '',
-  admin: { q:'', st:'todos' },
-  invQ: ''
-};
+    let cart = [];
+    const ui = {
+      view: 'catalog',
+      catQ: '', catType: 'todos',
+      tool: 'plan', toolQ: '', planEngine: 'isx15', planCond: 'normal', planKm: 8000,
+      filterQ: '',
+      admin: { q: '', st: 'todos' },
+      invQ: ''
+    };
 
-/* ============================ 8. CARRITO ============================ */
-function loadCart() {
-  if (!session || !session.id) { cart = []; return; }
-  try { cart = JSON.parse(localStorage.getItem(CART_PRE + session.id) || '[]'); } catch(e){ cart = []; }
-}
-function saveCart() {
-  if (session && session.id) localStorage.setItem(CART_PRE + session.id, JSON.stringify(cart));
-  if (session) setNav();
-}
-const cartCount = () => cart.reduce((a, l) => a + l.qty, 0);
+    /* ============================ 8. CARRITO ============================ */
+    function loadCart() {
+      if (!session || !session.id) { cart = []; return; }
+      try { cart = JSON.parse(localStorage.getItem(CART_PRE + session.id) || '[]'); } catch (e) { cart = []; }
+    }
+    function saveCart() {
+      if (session && session.id) localStorage.setItem(CART_PRE + session.id, JSON.stringify(cart));
+      if (session) setNav();
+    }
+    const cartCount = () => cart.reduce((a, l) => a + l.qty, 0);
 
-function addToCart(code, qty=1, silent=false) {
-  const p = prod(code);
-  if (!p) return;
-  if (p.stock <= 0) { toast('<b>' + esc(p.name) + '</b> está agotado.', 'warn'); return; }
-  const d = volDisc(qty), pu = round2(p.price * (1 - d / 100));
-  const line = cart.find(l => l.code === code && Math.abs(l.price - pu) < 0.001);
-  const current = line ? line.qty : 0;
-  if (current + qty > p.stock) { toast(`Stock disponible de <b>${esc(p.code)}</b>: <b>${p.stock}</b> u.`, 'warn'); return; }
-  if (line) line.qty += qty; else cart.push({ code, qty, price: pu, base: p.price, name: p.name });
-  saveCart();
-  if (!silent) toast(`<b>${esc(p.name)}</b> agregado al pedido (${qty} u${qty > 1 ? 'ds' : ''}).`, 'ok');
-}
+    function addToCart(code, qty = 1, silent = false) {
+      const p = prod(code);
+      if (!p) return;
+      if (p.stock <= 0) { toast('<b>' + esc(p.name) + '</b> está agotado.', 'warn'); return; }
+      const d = volDisc(qty), pu = round2(p.price * (1 - d / 100));
+      const line = cart.find(l => l.code === code && Math.abs(l.price - pu) < 0.001);
+      const current = line ? line.qty : 0;
+      if (current + qty > p.stock) { toast(`Stock disponible de <b>${esc(p.code)}</b>: <b>${p.stock}</b> u.`, 'warn'); return; }
+      if (line) line.qty += qty; else cart.push({ code, qty, price: pu, base: p.price, name: p.name });
+      saveCart();
+      if (!silent) toast(`<b>${esc(p.name)}</b> agregado al pedido (${qty} u${qty > 1 ? 'ds' : ''}).`, 'ok');
+    }
 
-function changeQty(i, delta) {
-  cart[i].qty = Math.max(1, cart[i].qty + delta);
-  cart[i].price = round2(cart[i].base * (1 - volDisc(cart[i].qty) / 100));
-  saveCart(); renderView();
-}
+    function changeQty(i, delta) {
+      cart[i].qty = Math.max(1, cart[i].qty + delta);
+      cart[i].price = round2(cart[i].base * (1 - volDisc(cart[i].qty) / 100));
+      saveCart(); renderView();
+    }
 
-function removeLine(i){ cart.splice(i, 1); saveCart(); renderView(); }
+    function removeLine(i) { cart.splice(i, 1); saveCart(); renderView(); }
 
-function cartTotals() {
-  const subtotal = round2(cart.reduce((a, item) => a + item.qty * item.price, 0));
-  const atList   = round2(cart.reduce((a, item) => a + item.qty * item.base, 0));
-  const tax      = round2(subtotal * IVA_RATE);
-  return { subtotal, tax, total: round2(subtotal + tax), saving: round2(atList - subtotal) };
-}
+    function cartTotals() {
+      const subtotal = round2(cart.reduce((a, item) => a + item.qty * item.price, 0));
+      const atList = round2(cart.reduce((a, item) => a + item.qty * item.base, 0));
+      const tax = round2(subtotal * IVA_RATE);
+      return { subtotal, tax, total: round2(subtotal + tax), saving: round2(atList - subtotal) };
+    }
 
-/* ============================ 9. AUTENTICACIÓN ============================ */
-function isAdmin() { return !!(session && session.role === 'admin'); }
+    /* ============================ 9. AUTENTICACIÓN ============================ */
+    function isAdmin() { return !!(session && session.role === 'admin'); }
 
-function validateSession() {
-  if (!session) return false;
-  if (session.role === 'seller') {
-    const u = sellerById(session.id);
-    if (!isSellerActive(u)) {
-      sessionStorage.removeItem(SESS_KEY);
-      session = null; cart = [];
-      toast('Tu cuenta de vendedor fue eliminada o desactivada por Administración.', 'warn', 4500);
+    function validateSession() {
+      if (!session) return false;
+      if (session.role === 'seller') {
+        const u = sellerById(session.id);
+        if (!isSellerActive(u)) {
+          sessionStorage.removeItem(SESS_KEY);
+          session = null; cart = [];
+          toast('Tu cuenta de vendedor fue eliminada o desactivada por Administración.', 'warn', 4500);
+          return false;
+        }
+        session.name = u.name;
+        sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
+        return true;
+      }
+      if (session.role === 'admin') return true;
+      sessionStorage.removeItem(SESS_KEY); session = null;
       return false;
     }
-    session.name = u.name;
-    sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
-    return true;
-  }
-  if (session.role === 'admin') return true;
-  sessionStorage.removeItem(SESS_KEY); session = null;
-  return false;
-}
 
-/* Jornada = solo inicio/fin del día. JAMÁS toca s.active. */
-function toggleJornada(id) {
-  if (!isAdmin()) { toast('Acción exclusiva para Administración.', 'bad'); return; }
-  loadDB();
-  const s = sellerById(id);
-  if (!s) return;
-  if (!db.jornada) db.jornada = {};
-  const j = db.jornada[s.id];
-  if (j && !j.end) {
-    j.end = Date.now();
-    logActivity('fa-flag-checkered', `${s.name} finalizó jornada`);
-    toast(`Jornada de <b>${esc(s.name)}</b> finalizada.`, 'info');
-  } else {
-    db.jornada[s.id] = { start: Date.now(), end: null };
-    logActivity('fa-play', `${s.name} inició jornada`);
-    toast(`Jornada de <b>${esc(s.name)}</b> iniciada.`, 'ok');
-  }
-  saveDB();
-  if (typeof renderCrew === 'function') renderCrew();
-}
-
-/* Activar/Desactivar cuenta = SOLO s.active. Al desactivar, cierra jornada abierta. */
-function toggleSellerActive(identifier) {
-  if (!isAdmin()) { toast('Acción exclusiva para Administración.', 'bad'); return; }
-  loadDB();
-  const list = getSellers();
-  const s = (typeof identifier === 'number') ? list[identifier]
-          : list.find(x => x.id === identifier || x.name === identifier);
-  if (!s) return;
-  const nowActive = !isSellerActive(s);
-  s.active = nowActive;
-  if (!nowActive && db.jornada && db.jornada[s.id] && !db.jornada[s.id].end) {
-    db.jornada[s.id].end = Date.now();
-  }
-  logActivity(nowActive ? 'fa-user-check' : 'fa-user-slash',
-    `${nowActive ? 'Vendedor reactivado' : 'Vendedor desactivado'}: ${s.name}`);
-  saveDB();
-  if (typeof renderCrew === 'function') renderCrew();
-  toast(`Vendedor <b>${esc(s.name)}</b> ahora está <b>${nowActive ? 'Activo' : 'Inactivo'}</b>.`, nowActive ? 'ok' : 'warn');
-}
-
-/* Función auxiliar de alternancia de estado desde la tabla */
-function toggleSellerActive(identifier) {
-  if (!isAdmin()) {
-    toast('Acción exclusiva para Administración.', 'bad');
-    return;
-  }
-  const sellersList = getSellers();
-  let s = null;
-  if (typeof identifier === 'number') s = sellersList[identifier];
-  else s = sellersList.find(x => x.id === identifier || x.name === identifier);
-
-  if (s) {
-    toggleJornada(s.id || s.name);
-  }
-}
-
-/* REQUISITO: Validación en doLogin() que reconoce al vendedor activo de inmediato y permite ingreso por PIN */
-function doLogin() {
-  loadDB(); /* estado local como base; abajo se refresca contra el servidor si hay nube */
-  const role = $('#login-role')?.value || 'seller';
-  const cred = ($('#login-pass')?.value || '').trim();
-  const nameSel = ($('#login-name')?.value || '').trim(); /* capturado ANTES de cualquier re-render */
-
-  if (role === 'admin') {
-    if (!cred) { toast('Ingresa la contraseña administrativa.', 'warn'); return; }
-    if (cred !== ADMIN_USER.pass) { toast('Contraseña administrativa incorrecta.', 'bad'); return; }
-    session = { id:'ADMIN', name: ADMIN_USER.name, role:'admin' };
-    sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
-    ui.view = defaultView(); loadCart(); initApp();
-    toast(`¡Bienvenido, <b>${esc(session.name)}</b>!`, 'ok');
-    return;
-  }
-
-  const finish = () => {
-    const all = getSellers();
-    if (!all.length) { toast('No hay vendedores registrados. Solicita a Administración registrar uno.', 'bad'); return; }
-    if (!nameSel) { toast('Selecciona tu nombre de vendedor.', 'warn'); return; }
-    if (!/^\d{4}$/.test(cred)) { toast('El PIN debe tener exactamente 4 dígitos numéricos.', 'bad'); return; }
-    const u = all.find(x => (x.name || '').toLowerCase() === nameSel.toLowerCase()
-                         || (x.id   || '').toLowerCase() === nameSel.toLowerCase());
-    if (!u) { toast('Vendedor no encontrado en el sistema.', 'bad'); return; }
-    if (!isSellerActive(u)) {
-      toast(`La cuenta de <b>${esc(u.name)}</b> está inactiva. Debe dirigirse a administración para que active su cuenta.`, 'warn', 4500);
-      return;
+    /* Jornada = solo inicio/fin del día. JAMÁS toca s.active. */
+    function toggleJornada(id) {
+      if (!isAdmin()) { toast('Acción exclusiva para Administración.', 'bad'); return; }
+      loadDB();
+      const s = sellerById(id);
+      if (!s) return;
+      if (!db.jornada) db.jornada = {};
+      const j = db.jornada[s.id];
+      if (j && !j.end) {
+        j.end = Date.now();
+        logActivity('fa-flag-checkered', `${s.name} finalizó jornada`);
+        toast(`Jornada de <b>${esc(s.name)}</b> finalizada.`, 'info');
+      } else {
+        db.jornada[s.id] = { start: Date.now(), end: null };
+        logActivity('fa-play', `${s.name} inició jornada`);
+        toast(`Jornada de <b>${esc(s.name)}</b> iniciada.`, 'ok');
+      }
+      saveDB();
+      if (typeof renderCrew === 'function') renderCrew();
     }
-    if (cred !== String(u.pin)) { toast(`Clave (PIN) incorrecta para <b>${esc(u.name)}</b>.`, 'bad'); return; }
-    session = { id: u.id, name: u.name, role:'seller' };
-    sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
-    ui.view = defaultView(); loadCart(); initApp();
-    toast(`¡Bienvenido, <b>${esc(session.name)}</b>!`, 'ok');
-  };
 
-  /* FIX clave: el PIN se valida contra el ESTADO DEL SERVIDOR, no contra la copia local vieja */
-  if (cloudReady && navigator.onLine) {
-    setCloudStatus('sync');
-    cloudRef().get({ source: 'server' })
-      .then(snap => {
-        if (snap.exists) applyRemote(snap.data()); /* aplica y persiste el estado más reciente */
-        setCloudStatus('ok');
-      })
-      .catch(err => { console.warn('doLogin refresh:', err); setCloudStatus('off'); })
-      .finally(finish); /* cred y nameSel ya están capturados: aunque renderLogin repinte, no se pierden */
-  } else {
-    finish();
-  }
-}
-function validateSession() {
-  if (!session) return false;
-  if (session.role === 'seller') {
-    const u = sellerById(session.id);
-    if (!isSellerActive(u)) {
-      sessionStorage.removeItem(SESS_KEY);
-      session = null; cart = [];
-      toast('Tu cuenta de vendedor fue eliminada o desactivada por Administración.', 'warn', 4500);
+    /* Activar/Desactivar cuenta = SOLO s.active. Al desactivar, cierra jornada abierta. */
+    function toggleSellerActive(identifier) {
+      if (!isAdmin()) { toast('Acción exclusiva para Administración.', 'bad'); return; }
+      loadDB();
+      const list = getSellers();
+      const s = (typeof identifier === 'number') ? list[identifier]
+        : list.find(x => x.id === identifier || x.name === identifier);
+      if (!s) return;
+      const nowActive = !isSellerActive(s);
+      s.active = nowActive;
+      if (!nowActive && db.jornada && db.jornada[s.id] && !db.jornada[s.id].end) {
+        db.jornada[s.id].end = Date.now();
+      }
+      logActivity(nowActive ? 'fa-user-check' : 'fa-user-slash',
+        `${nowActive ? 'Vendedor reactivado' : 'Vendedor desactivado'}: ${s.name}`);
+      saveDB();
+      if (typeof renderCrew === 'function') renderCrew();
+      toast(`Vendedor <b>${esc(s.name)}</b> ahora está <b>${nowActive ? 'Activo' : 'Inactivo'}</b>.`, nowActive ? 'ok' : 'warn');
+    }
+
+    /* Función auxiliar de alternancia de estado desde la tabla */
+    function toggleSellerActive(identifier) {
+      if (!isAdmin()) {
+        toast('Acción exclusiva para Administración.', 'bad');
+        return;
+      }
+      const sellersList = getSellers();
+      let s = null;
+      if (typeof identifier === 'number') s = sellersList[identifier];
+      else s = sellersList.find(x => x.id === identifier || x.name === identifier);
+
+      if (s) {
+        toggleJornada(s.id || s.name);
+      }
+    }
+
+    /* REQUISITO: Validación en doLogin() que reconoce al vendedor activo de inmediato y permite ingreso por PIN */
+    function doLogin() {
+      loadDB(); /* estado local como base; abajo se refresca contra el servidor si hay nube */
+      const role = $('#login-role')?.value || 'seller';
+      const cred = ($('#login-pass')?.value || '').trim();
+      const nameSel = ($('#login-name')?.value || '').trim(); /* capturado ANTES de cualquier re-render */
+
+      if (role === 'admin') {
+        if (!cred) { toast('Ingresa la contraseña administrativa.', 'warn'); return; }
+        if (cred !== ADMIN_USER.pass) { toast('Contraseña administrativa incorrecta.', 'bad'); return; }
+        session = { id: 'ADMIN', name: ADMIN_USER.name, role: 'admin' };
+        sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
+        ui.view = defaultView(); loadCart(); initApp();
+        toast(`¡Bienvenido, <b>${esc(session.name)}</b>!`, 'ok');
+        return;
+      }
+
+      const finish = () => {
+        const all = getSellers();
+        if (!all.length) { toast('No hay vendedores registrados. Solicita a Administración registrar uno.', 'bad'); return; }
+        if (!nameSel) { toast('Selecciona tu nombre de vendedor.', 'warn'); return; }
+        if (!/^\d{4}$/.test(cred)) { toast('El PIN debe tener exactamente 4 dígitos numéricos.', 'bad'); return; }
+        const u = all.find(x => (x.name || '').toLowerCase() === nameSel.toLowerCase()
+          || (x.id || '').toLowerCase() === nameSel.toLowerCase());
+        if (!u) { toast('Vendedor no encontrado en el sistema.', 'bad'); return; }
+        if (!isSellerActive(u)) {
+          toast(`La cuenta de <b>${esc(u.name)}</b> está inactiva. Debe dirigirse a administración para que active su cuenta.`, 'warn', 4500);
+          return;
+        }
+        if (cred !== String(u.pin)) { toast(`Clave (PIN) incorrecta para <b>${esc(u.name)}</b>.`, 'bad'); return; }
+        session = { id: u.id, name: u.name, role: 'seller' };
+        sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
+        ui.view = defaultView(); loadCart(); initApp();
+        toast(`¡Bienvenido, <b>${esc(session.name)}</b>!`, 'ok');
+      };
+
+      /* FIX clave: el PIN se valida contra el ESTADO DEL SERVIDOR, no contra la copia local vieja */
+      if (cloudReady && navigator.onLine) {
+        setCloudStatus('sync');
+        cloudRef().get({ source: 'server' })
+          .then(snap => {
+            if (snap.exists) applyRemote(snap.data()); /* aplica y persiste el estado más reciente */
+            setCloudStatus('ok');
+          })
+          .catch(err => { console.warn('doLogin refresh:', err); setCloudStatus('off'); })
+          .finally(finish); /* cred y nameSel ya están capturados: aunque renderLogin repinte, no se pierden */
+      } else {
+        finish();
+      }
+    }
+    function validateSession() {
+      if (!session) return false;
+      if (session.role === 'seller') {
+        const u = sellerById(session.id);
+        if (!isSellerActive(u)) {
+          sessionStorage.removeItem(SESS_KEY);
+          session = null; cart = [];
+          toast('Tu cuenta de vendedor fue eliminada o desactivada por Administración.', 'warn', 4500);
+          return false;
+        }
+        session.name = u.name;
+        sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
+        return true;
+      }
+      if (session.role === 'admin') return true;
+      sessionStorage.removeItem(SESS_KEY); session = null;
       return false;
     }
-    session.name = u.name;
-    sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
-    return true;
-  }
-  if (session.role === 'admin') return true;
-  sessionStorage.removeItem(SESS_KEY); session = null;
-  return false;
-}
-function onLoginRoleChange() {
-  const role = $('#login-role')?.value;
-  const pick = $('#seller-pick');
-  const hint = $('#seller-hint');
-  const lbl  = $('#pass-lbl');
-  const inp  = $('#login-pass');
-  if (pick) pick.classList.toggle('hidden', role === 'admin');
-  if (hint) hint.classList.toggle('hidden', role === 'admin');
-  if (lbl && inp) {
-    if (role === 'admin') {
-      lbl.textContent = 'Contraseña administrativa *';
-      inp.maxLength = 24; inp.inputMode = 'text'; inp.placeholder = '••••••••••';
-    } else {
-      lbl.textContent = 'Clave de acceso (PIN) *';
-      inp.maxLength = 4; inp.inputMode = 'numeric'; inp.placeholder = '••••';
+    function onLoginRoleChange() {
+      const role = $('#login-role')?.value;
+      const pick = $('#seller-pick');
+      const hint = $('#seller-hint');
+      const lbl = $('#pass-lbl');
+      const inp = $('#login-pass');
+      if (pick) pick.classList.toggle('hidden', role === 'admin');
+      if (hint) hint.classList.toggle('hidden', role === 'admin');
+      if (lbl && inp) {
+        if (role === 'admin') {
+          lbl.textContent = 'Contraseña administrativa *';
+          inp.maxLength = 24; inp.inputMode = 'text'; inp.placeholder = '••••••••••';
+        } else {
+          lbl.textContent = 'Clave de acceso (PIN) *';
+          inp.maxLength = 4; inp.inputMode = 'numeric'; inp.placeholder = '••••';
+        }
+        inp.value = '';
+      }
     }
-    inp.value = '';
+
+    function logout() {
+      confirmDialog('Cerrar sesión', '¿Salir del sistema? Los datos locales se conservan en este dispositivo.', 'Salir', () => {
+        sessionStorage.removeItem(SESS_KEY);
+        session = null; cart = [];
+        ui.view = 'catalog';
+        renderLogin();
+      }, false);
+    }
+
+    function renderLogin() {
+      loadDB();
+      
+      if (!(db.sellers && db.sellers.length) && cloudReady && navigator.onLine) {
+    cloudRef().get({ source: 'server' }).then(snap => {
+      if (snap.exists) {
+        applyRemote(snap.data());
+        renderLogin();
+      }
+    }).catch(err => console.warn('Sync login error:', err));
   }
-}
+      const online = navigator.onLine;
+      const sellers = getSellers();
+      const activos = activeSellers();
 
-function logout() {
-  confirmDialog('Cerrar sesión', '¿Salir del sistema? Los datos locales se conservan en este dispositivo.', 'Salir', () => {
-    sessionStorage.removeItem(SESS_KEY);
-    session = null; cart = [];
-    ui.view = 'catalog';
-    renderLogin();
-  }, false);
-}
+      const opts = sellers.map(u => {
+        const on = u.active !== false && u.active !== 'false' && u.active !== 0;
+        return `<option value="${esc(u.name)}" ${!on ? 'class="text-steel-400 font-normal"' : 'class="font-semibold text-navy-900"'}>${esc(u.name)} — ${esc(u.zone)}${!on ? ' (Inactivo - requiere activación)' : ''}</option>`;
+      }).join('');
 
-function renderLogin() {
-  loadDB();
-  const online = navigator.onLine;
-  const sellers = getSellers();
-  const activos = activeSellers();
-
-  const opts = sellers.map(u => {
-    const on = u.active !== false && u.active !== 'false' && u.active !== 0;
-    return `<option value="${esc(u.name)}" ${!on ? 'class="text-steel-400 font-normal"' : 'class="font-semibold text-navy-900"'}>${esc(u.name)} — ${esc(u.zone)}${!on ? ' (Inactivo - requiere activación)' : ''}</option>`;
-  }).join('');
-
-  $('#app').innerHTML = `
+      $('#app').innerHTML = `
   <div class="min-h-screen blueprint flex flex-col items-center justify-center p-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow-lg border border-steel-200 overflow-hidden anim-up">
       <div class="hazard h-2"></div>
@@ -857,47 +1087,47 @@ function renderLogin() {
       </div>
     </div>
   </div>`;
-}
+    }
 
-/* ============================ 10. SHELL / NAVEGACIÓN ============================ */
-const NAV = {
-  seller: [
-    { id:'catalog',  icon:'fa-boxes-stacked',     label:'Catálogo' },
-    { id:'tools',    icon:'fa-calculator',        label:'Herram.'  },
-    { id:'cart',     icon:'fa-cart-shopping',     label:'Pedido',  badge: () => cartCount() },
-    { id:'history',  icon:'fa-clock-rotate-left', label:'Historial' }
-  ],
-  admin: [
-    { id:'catalog',   icon:'fa-boxes-stacked',  label:'Catálogo'   },
-    { id:'dash',      icon:'fa-gauge-high',     label:'Panel'      },
-    { id:'orders',    icon:'fa-file-invoice',   label:'Pedidos',   badge: () => db.orders.filter(o => o.status === 'pendiente').length },
-    { id:'crew',      icon:'fa-route',          label:'Jornada'    },
-    { id:'inventory', icon:'fa-warehouse',      label:'Inventario' },
-    { id:'backup',    icon:'fa-database',       label:'Respaldo'   }
-  ]
-};
-const VIEW_TITLES = {
-  catalog:'Catálogo técnico', tools:'Herramientas técnicas', cart:'Pedido en curso', history:'Historial de pedidos',
-  dash:'Panel de control', orders:'Pedidos entrantes', crew:'Control de jornada y vendedores', inventory:'Inventario', backup:'Respaldo y sincronización'
-};
+    /* ============================ 10. SHELL / NAVEGACIÓN ============================ */
+    const NAV = {
+      seller: [
+        { id: 'catalog', icon: 'fa-boxes-stacked', label: 'Catálogo' },
+        { id: 'tools', icon: 'fa-calculator', label: 'Herram.' },
+        { id: 'cart', icon: 'fa-cart-shopping', label: 'Pedido', badge: () => cartCount() },
+        { id: 'history', icon: 'fa-clock-rotate-left', label: 'Historial' }
+      ],
+      admin: [
+        { id: 'catalog', icon: 'fa-boxes-stacked', label: 'Catálogo' },
+        { id: 'dash', icon: 'fa-gauge-high', label: 'Panel' },
+        { id: 'orders', icon: 'fa-file-invoice', label: 'Pedidos', badge: () => db.orders.filter(o => o.status === 'pendiente').length },
+        { id: 'crew', icon: 'fa-route', label: 'Jornada' },
+        { id: 'inventory', icon: 'fa-warehouse', label: 'Inventario' },
+        { id: 'backup', icon: 'fa-database', label: 'Respaldo' }
+      ]
+    };
+    const VIEW_TITLES = {
+      catalog: 'Catálogo técnico', tools: 'Herramientas técnicas', cart: 'Pedido en curso', history: 'Historial de pedidos',
+      dash: 'Panel de control', orders: 'Pedidos entrantes', crew: 'Control de jornada y vendedores', inventory: 'Inventario', backup: 'Respaldo y sincronización'
+    };
 
-const navFor      = () => (session && NAV[session.role]) ? NAV[session.role] : NAV.seller;
-const navIdsFor   = () => navFor().map(n => n.id);
-const defaultView = () => (session && session.role === 'admin') ? 'dash' : 'catalog';
+    const navFor = () => (session && NAV[session.role]) ? NAV[session.role] : NAV.seller;
+    const navIdsFor = () => navFor().map(n => n.id);
+    const defaultView = () => (session && session.role === 'admin') ? 'dash' : 'catalog';
 
-function renderCurrent() {
-  if (session && validateSession() && document.querySelector('[data-nav]')) {
-    if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
-    renderView(); setNav();
-    if (ui.view === 'catalog') renderFilterCatalogGrid();
-  } else {
-    renderLogin();
-  }
-}
+    function renderCurrent() {
+      if (session && validateSession() && document.querySelector('[data-nav]')) {
+        if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
+        renderView(); setNav();
+        if (ui.view === 'catalog') renderFilterCatalogGrid();
+      } else {
+        renderLogin();
+      }
+    }
 
-function renderShell() {
-  const nav = navFor();
-  $('#app').innerHTML = `
+    function renderShell() {
+      const nav = navFor();
+      $('#app').innerHTML = `
   <div class="min-h-screen flex flex-col bg-steel-100">
     <header class="bg-navy-900 text-white shadow-md sticky top-0 z-40">
       <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
@@ -942,70 +1172,70 @@ function renderShell() {
         </button>`).join('')}
     </nav>
   </div>`;
-  tickClock(); updateConnChip(); setNav(); setTitle();
-}
+      tickClock(); updateConnChip(); setNav(); setTitle();
+    }
 
-function setTitle() {
-  const t = VIEW_TITLES[ui.view] || '';
-  const el = $('#view-title'); if (el) el.textContent = t;
-  document.title = (t ? t + ' — ' : '') + 'Truck Filters, c.a.';
-}
+    function setTitle() {
+      const t = VIEW_TITLES[ui.view] || '';
+      const el = $('#view-title'); if (el) el.textContent = t;
+      document.title = (t ? t + ' — ' : '') + 'Truck Filters, c.a.';
+    }
 
-function go(v) {
-  if (!session) { renderLogin(); return; }
-  const ids = navIdsFor();
-  ui.view = ids.includes(v) ? v : defaultView();
-  closeModal(); renderView(); setNav(); setTitle();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+    function go(v) {
+      if (!session) { renderLogin(); return; }
+      const ids = navIdsFor();
+      ui.view = ids.includes(v) ? v : defaultView();
+      closeModal(); renderView(); setNav(); setTitle();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
-function setNav() {
-  document.querySelectorAll('[data-nav]').forEach(b => {
-    const on = b.dataset.nav === ui.view;
-    b.classList.toggle('text-navy-900', on);
-    b.classList.toggle('font-bold', on);
-    b.classList.toggle('text-steel-500', !on);
-    b.classList.toggle('hover:text-navy-900', !on);
-    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
-  });
-  const role = session ? navFor() : NAV.seller;
-  document.querySelectorAll('[data-badge]').forEach(s => {
-    const def = role.find(n => n.id === s.dataset.badge);
-    const n = def && typeof def.badge === 'function' ? def.badge() : 0;
-    if (n > 0) { s.classList.remove('hidden'); s.classList.add('flex'); s.textContent = n > 99 ? '99+' : String(n); }
-    else { s.classList.add('hidden'); s.classList.remove('flex'); s.textContent = ''; }
-  });
-}
+    function setNav() {
+      document.querySelectorAll('[data-nav]').forEach(b => {
+        const on = b.dataset.nav === ui.view;
+        b.classList.toggle('text-navy-900', on);
+        b.classList.toggle('font-bold', on);
+        b.classList.toggle('text-steel-500', !on);
+        b.classList.toggle('hover:text-navy-900', !on);
+        if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+      });
+      const role = session ? navFor() : NAV.seller;
+      document.querySelectorAll('[data-badge]').forEach(s => {
+        const def = role.find(n => n.id === s.dataset.badge);
+        const n = def && typeof def.badge === 'function' ? def.badge() : 0;
+        if (n > 0) { s.classList.remove('hidden'); s.classList.add('flex'); s.textContent = n > 99 ? '99+' : String(n); }
+        else { s.classList.add('hidden'); s.classList.remove('flex'); s.textContent = ''; }
+      });
+    }
 
-function updateConnChip() {
-  const c = $('#conn-chip'); if (!c) return;
-  let cls, txt;
-  if (!navigator.onLine)           { cls = 'bg-red-500/15 text-red-300 border-red-500/40';           txt = 'OFFLINE · LOCAL'; }
-  else if (cloudStatus === 'cfg')  { cls = 'bg-amber-500/15 text-amber-300 border-amber-500/40';     txt = 'CLOUD SIN CONFIG'; }
-  else if (cloudStatus === 'sync') { cls = 'bg-blue-500/15 text-blue-300 border-blue-500/40';        txt = 'SINCRONIZANDO'; }
-  else if (cloudStatus === 'ok')   { cls = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'; txt = 'EN LA NUBE'; }
-  else                             { cls = 'bg-steel-500/15 text-steel-300 border-steel-500/40';     txt = 'SOLO LOCAL'; }
-  c.className = `px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`;
-  const dot = txt.includes('OFFLINE') ? 'bg-red-400' : txt.includes('NUBE') ? 'bg-emerald-400 xlive-dot' : 'bg-amber-400';
-  c.innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${dot} inline-block mr-1"></span>${txt}`;
-}
+    function updateConnChip() {
+      const c = $('#conn-chip'); if (!c) return;
+      let cls, txt;
+      if (!navigator.onLine) { cls = 'bg-red-500/15 text-red-300 border-red-500/40'; txt = 'OFFLINE · LOCAL'; }
+      else if (cloudStatus === 'cfg') { cls = 'bg-amber-500/15 text-amber-300 border-amber-500/40'; txt = 'CLOUD SIN CONFIG'; }
+      else if (cloudStatus === 'sync') { cls = 'bg-blue-500/15 text-blue-300 border-blue-500/40'; txt = 'SINCRONIZANDO'; }
+      else if (cloudStatus === 'ok') { cls = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'; txt = 'EN LA NUBE'; }
+      else { cls = 'bg-steel-500/15 text-steel-300 border-steel-500/40'; txt = 'SOLO LOCAL'; }
+      c.className = `px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`;
+      const dot = txt.includes('OFFLINE') ? 'bg-red-400' : txt.includes('NUBE') ? 'bg-emerald-400 xlive-dot' : 'bg-amber-400';
+      c.innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${dot} inline-block mr-1"></span>${txt}`;
+    }
 
-function tickClock() { const c = $('#clock'); if (c) c.textContent = new Date().toLocaleTimeString('es-VE'); }
-setInterval(tickClock, 1000);
+    function tickClock() { const c = $('#clock'); if (c) c.textContent = new Date().toLocaleTimeString('es-VE'); }
+    setInterval(tickClock, 1000);
 
-/* ============================ 11. VISTAS — COMERCIAL ============================ */
-function productCards() {
-  const q = (ui.catQ || '').toLowerCase().trim();
-  const list = (db.products || PRODUCTS)
-    .filter(p => ui.catType === 'todos' || p.type === ui.catType)
-    .filter(p => !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || (p.app || []).some(a => a.toLowerCase().includes(q)));
-  if (!list.length) {
-    return `<div class="card col-span-full text-center py-10 space-y-2">
+    /* ============================ 11. VISTAS — COMERCIAL ============================ */
+    function productCards() {
+      const q = (ui.catQ || '').toLowerCase().trim();
+      const list = (db.products || PRODUCTS)
+        .filter(p => ui.catType === 'todos' || p.type === ui.catType)
+        .filter(p => !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || (p.app || []).some(a => a.toLowerCase().includes(q)));
+      if (!list.length) {
+        return `<div class="card col-span-full text-center py-10 space-y-2">
       <i class="fa-solid fa-filter-circle-xmark text-3xl text-steel-300"></i>
       <p class="text-sm text-steel-500">Sin resultados para tu búsqueda.</p>
     </div>`;
-  }
-  return list.map(p => `
+      }
+      return list.map(p => `
     <div class="card flex flex-col gap-3">
       <div class="blueprint rounded-xl border border-steel-200 p-2 flex items-center justify-center">${techSVG(p)}</div>
       <div>
@@ -1026,12 +1256,12 @@ function productCards() {
         </button>
       </div>
     </div>`).join('');
-}
-function renderProductList() { const el = document.getElementById('product-list'); if (el) el.innerHTML = productCards(); }
+    }
+    function renderProductList() { const el = document.getElementById('product-list'); if (el) el.innerHTML = productCards(); }
 
-function viewCatalog() {
-  const types = ['todos', ...Object.keys(TYPE_META)];
-  return `
+    function viewCatalog() {
+      const types = ['todos', ...Object.keys(TYPE_META)];
+      return `
   <div class="p-4 pb-24 max-w-7xl mx-auto space-y-6 anim-up">
     <div>
       <div class="kicker mb-1">Truck Filters · Referencias HD</div>
@@ -1050,11 +1280,11 @@ function viewCatalog() {
 
     ${viewFiltersCatalog()}
   </div>`;
-}
+    }
 
-/* ============================ CATÁLOGO VISUAL ============================ */
-function viewFiltersCatalog() {
-  return `
+    /* ============================ CATÁLOGO VISUAL ============================ */
+    function viewFiltersCatalog() {
+      return `
   <section id="sev-section" class="space-y-4">
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
@@ -1077,10 +1307,10 @@ function viewFiltersCatalog() {
 
     ${isAdmin() ? viewFiltersAdminPanel() : ''}
   </section>`;
-}
+    }
 
-function viewFiltersAdminPanel() {
-  return `
+    function viewFiltersAdminPanel() {
+      return `
   <details id="filterFormDetails" class="card group">
     <summary class="flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
       <span class="flex items-center gap-2">
@@ -1132,18 +1362,18 @@ function viewFiltersAdminPanel() {
       </div>
     </form>
   </details>`;
-}
+    }
 
-/* ============================ 12. HERRAMIENTAS ============================ */
-function toolPlan() {
-  const eng  = ENGINES.find(e => e.id === ui.planEngine) || ENGINES[0];
-  const cond = CONDS[ui.planCond];
-  const slots = [
-    { label:'Aceite',       iv: eng.iv.oil,  code: eng.oil  },
-    { label:'Combustible',  iv: eng.iv.fuel, code: eng.fuel },
-    { label:'Aire primario',iv: eng.iv.airP, code: eng.airP }
-  ].filter(s => s.code && s.iv);
-  return `
+    /* ============================ 12. HERRAMIENTAS ============================ */
+    function toolPlan() {
+      const eng = ENGINES.find(e => e.id === ui.planEngine) || ENGINES[0];
+      const cond = CONDS[ui.planCond];
+      const slots = [
+        { label: 'Aceite', iv: eng.iv.oil, code: eng.oil },
+        { label: 'Combustible', iv: eng.iv.fuel, code: eng.fuel },
+        { label: 'Aire primario', iv: eng.iv.airP, code: eng.airP }
+      ].filter(s => s.code && s.iv);
+      return `
   <div class="card space-y-4">
     <div class="grid sm:grid-cols-3 gap-3">
       <div>
@@ -1190,24 +1420,24 @@ function toolPlan() {
       }).join('')}
     </div>
   </div>`;
-}
+    }
 
-function refRows() {
-  const q = (ui.toolQ || '').toLowerCase().trim();
-  if (!q) {
-    return `<div class="bg-white border border-steel-200 rounded-xl p-4 text-xs text-steel-500 flex items-start gap-2">
+    function refRows() {
+      const q = (ui.toolQ || '').toLowerCase().trim();
+      if (!q) {
+        return `<div class="bg-white border border-steel-200 rounded-xl p-4 text-xs text-steel-500 flex items-start gap-2">
       <i class="fa-solid fa-circle-info text-navy-700 mt-0.5"></i>
       <span>Escribe una referencia del mercado (Fleetguard, Wix, Napa, Donaldson, Baldwin…) para hallar el equivalente Truck Filters.</span>
     </div>`;
-  }
-  const rows = [];
-  (db.products || PRODUCTS).forEach(p => (p.cross || []).forEach(([brand, ref]) => {
-    if (ref.toLowerCase().includes(q) || brand.toLowerCase().includes(q)) rows.push({ brand, ref, p });
-  }));
-  if (!rows.length) {
-    return `<div class="bg-white border border-steel-200 rounded-xl p-4 text-sm text-steel-500">Sin equivalencias para "<b>${esc(ui.toolQ)}</b>".</div>`;
-  }
-  return rows.map(r => `
+      }
+      const rows = [];
+      (db.products || PRODUCTS).forEach(p => (p.cross || []).forEach(([brand, ref]) => {
+        if (ref.toLowerCase().includes(q) || brand.toLowerCase().includes(q)) rows.push({ brand, ref, p });
+      }));
+      if (!rows.length) {
+        return `<div class="bg-white border border-steel-200 rounded-xl p-4 text-sm text-steel-500">Sin equivalencias para "<b>${esc(ui.toolQ)}</b>".</div>`;
+      }
+      return rows.map(r => `
     <div class="bg-white border border-steel-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
       <div class="min-w-0">
         <div class="text-sm font-bold text-navy-900">${esc(r.brand)} · ${esc(r.ref)}</div>
@@ -1215,18 +1445,18 @@ function refRows() {
       </div>
       <button onclick="addToCart('${r.p.code}',1)" class="btn-navy px-3 py-1.5 text-xs rounded-lg shrink-0"><i class="fa-solid fa-cart-plus"></i></button>
     </div>`).join('');
-}
-function renderRefResults() { const el = document.getElementById('ref-results'); if (el) el.innerHTML = refRows(); }
+    }
+    function renderRefResults() { const el = document.getElementById('ref-results'); if (el) el.innerHTML = refRows(); }
 
-function viewTools() {
-  return `
+    function viewTools() {
+      return `
   <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
     <div>
       <div class="kicker mb-1">Asistencia técnica en ruta</div>
       <h2 class="text-xl font-bold text-navy-900 font-disp">Herramientas</h2>
     </div>
     <div class="flex gap-2">
-      ${[['plan','Plan de mantenimiento','fa-calendar-check'],['refs','Referencias cruzadas','fa-arrows-rotate']].map(([k, l, ic]) => `
+      ${[['plan', 'Plan de mantenimiento', 'fa-calendar-check'], ['refs', 'Referencias cruzadas', 'fa-arrows-rotate']].map(([k, l, ic]) => `
         <button onclick="ui.tool='${k}';renderView()" class="chip border ${ui.tool === k ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-navy-700 border-steel-200 hover:border-navy-400'}"><i class="fa-solid ${ic}"></i> ${l}</button>`).join('')}
     </div>
     ${ui.tool === 'refs' ? `
@@ -1238,12 +1468,12 @@ function viewTools() {
         <div id="ref-results" class="space-y-2">${refRows()}</div>
       </div>` : toolPlan()}
   </div>`;
-}
+    }
 
-/* ============================ 13. PEDIDO / HISTORIAL ============================ */
-function viewCart() {
-  if (!cart.length) {
-    return `
+    /* ============================ 13. PEDIDO / HISTORIAL ============================ */
+    function viewCart() {
+      if (!cart.length) {
+        return `
     <div class="p-4 pb-24 max-w-3xl mx-auto anim-up">
       <div class="card text-center py-12 space-y-4">
         <div class="w-16 h-16 mx-auto rounded-2xl bg-steel-100 flex items-center justify-center"><i class="fa-solid fa-cart-shopping text-2xl text-steel-400"></i></div>
@@ -1254,10 +1484,10 @@ function viewCart() {
         <button onclick="go('catalog')" class="btn-navy px-5 py-2.5 text-xs rounded-xl mx-auto"><i class="fa-solid fa-boxes-stacked"></i> Ir al catálogo</button>
       </div>
     </div>`;
-  }
-  const t = cartTotals();
-  const discTag = q => q >= 50 ? '−8%' : q >= 25 ? '−5%' : q >= 10 ? '−3%' : '';
-  return `
+      }
+      const t = cartTotals();
+      const discTag = q => q >= 50 ? '−8%' : q >= 25 ? '−5%' : q >= 10 ? '−3%' : '';
+      return `
   <div class="p-4 pb-24 max-w-3xl mx-auto space-y-5 anim-up">
     <div>
       <div class="kicker mb-1">Orden en preparación</div>
@@ -1309,16 +1539,16 @@ function viewCart() {
     </div>
     <button onclick="submitOrder()" class="btn-ok w-full py-3.5 rounded-xl font-bold text-sm"><i class="fa-solid fa-paper-plane"></i> Enviar pedido a oficina</button>
   </div>`;
-}
+    }
 
-function viewHistory() {
-  const mine  = db.orders.filter(o => o.sellerId === session.id);
-  const total = mine.reduce((a, o) => a + o.total, 0);
-  const pend  = mine.filter(o => o.status === 'pendiente').length;
-  const statBox = (l, v) => `<div class="bg-white border border-steel-200 rounded-xl shadow-sm p-3 text-center">
+    function viewHistory() {
+      const mine = db.orders.filter(o => o.sellerId === session.id);
+      const total = mine.reduce((a, o) => a + o.total, 0);
+      const pend = mine.filter(o => o.status === 'pendiente').length;
+      const statBox = (l, v) => `<div class="bg-white border border-steel-200 rounded-xl shadow-sm p-3 text-center">
     <div class="kicker">${l}</div><div class="text-lg font-bold font-disp text-navy-900 mt-0.5">${v}</div>
   </div>`;
-  return `
+      return `
   <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
     <div>
       <div class="kicker mb-1">${esc(session.name)} · ${esc((sellerById(session.id) || {}).zone || 'Zona comercial')}</div>
@@ -1342,13 +1572,13 @@ function viewHistory() {
           </div>
           <div class="text-lg font-bold font-disp text-navy-900">${money(o.total)}</div>
         </div>`).join('')
-      : `<div class="card text-sm text-steel-500 text-center py-8">Aún no has enviado pedidos. Ve al <b>Catálogo</b> y arma el primero.</div>`}
+          : `<div class="card text-sm text-steel-500 text-center py-8">Aún no has enviado pedidos. Ve al <b>Catálogo</b> y arma el primero.</div>`}
     </div>
   </div>`;
-}
+    }
 
-/* ============================ 14. VISTAS — OFICINA (SOLO ADMIN) ============================ */
-const kpiCard = (ic, label, value, cls) => `
+    /* ============================ 14. VISTAS — OFICINA (SOLO ADMIN) ============================ */
+    const kpiCard = (ic, label, value, cls) => `
   <div class="card flex items-center gap-3">
     <div class="w-11 h-11 rounded-xl ${cls} flex items-center justify-center shrink-0"><i class="fa-solid ${ic}"></i></div>
     <div class="min-w-0">
@@ -1357,12 +1587,12 @@ const kpiCard = (ic, label, value, cls) => `
     </div>
   </div>`;
 
-function viewDash() {
-  const pend = db.orders.filter(o => o.status === 'pendiente');
-  const today = db.orders.filter(o => o.ts >= t0());
-  const salesToday = today.reduce((a, o) => a + o.total, 0);
-  const lowStock = (db.products || PRODUCTS).filter(p => p.stock < 20);
-  return `
+    function viewDash() {
+      const pend = db.orders.filter(o => o.status === 'pendiente');
+      const today = db.orders.filter(o => o.ts >= t0());
+      const salesToday = today.reduce((a, o) => a + o.total, 0);
+      const lowStock = (db.products || PRODUCTS).filter(p => p.stock < 20);
+      return `
   <div class="p-4 pb-24 max-w-7xl mx-auto space-y-5 anim-up">
     <div class="flex items-end justify-between flex-wrap gap-3">
       <div>
@@ -1375,9 +1605,9 @@ function viewDash() {
     </div>
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       ${kpiCard('fa-hourglass-half', 'Pedidos pendientes', pend.length, 'bg-acc text-navy-950')}
-      ${kpiCard('fa-circle-check',   'Aprobados', db.orders.filter(o => o.status === 'aprobado').length, 'bg-blue-600 text-white')}
-      ${kpiCard('fa-truck-fast',     'Despachados', db.orders.filter(o => o.status === 'despachado').length, 'bg-emerald-600 text-white')}
-      ${kpiCard('fa-sack-dollar',    'Ventas de hoy', money(salesToday), 'bg-navy-900 text-white')}
+      ${kpiCard('fa-circle-check', 'Aprobados', db.orders.filter(o => o.status === 'aprobado').length, 'bg-blue-600 text-white')}
+      ${kpiCard('fa-truck-fast', 'Despachados', db.orders.filter(o => o.status === 'despachado').length, 'bg-emerald-600 text-white')}
+      ${kpiCard('fa-sack-dollar', 'Ventas de hoy', money(salesToday), 'bg-navy-900 text-white')}
     </div>
     <div class="grid lg:grid-cols-2 gap-4">
       <div class="card">
@@ -1405,20 +1635,20 @@ function viewDash() {
       </div>
     </div>
   </div>`;
-}
+    }
 
-function orderCards() {
-  const q = (ui.admin.q || '').toLowerCase().trim();
-  const list = db.orders
-    .filter(o => ui.admin.st === 'todos' || o.status === ui.admin.st)
-    .filter(o => !q || o.number.toLowerCase().includes(q) || ((o.client || {}).name || '').toLowerCase().includes(q) || (o.sellerName || '').toLowerCase().includes(q));
-  if (!list.length) {
-    return `<div class="card text-center py-10 space-y-2">
+    function orderCards() {
+      const q = (ui.admin.q || '').toLowerCase().trim();
+      const list = db.orders
+        .filter(o => ui.admin.st === 'todos' || o.status === ui.admin.st)
+        .filter(o => !q || o.number.toLowerCase().includes(q) || ((o.client || {}).name || '').toLowerCase().includes(q) || (o.sellerName || '').toLowerCase().includes(q));
+      if (!list.length) {
+        return `<div class="card text-center py-10 space-y-2">
       <i class="fa-solid fa-inbox text-3xl text-steel-300"></i>
       <p class="text-sm text-steel-500">No hay pedidos con estos criterios.</p>
     </div>`;
-  }
-  return list.map(o => `
+      }
+      return list.map(o => `
     <div class="card">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="min-w-0">
@@ -1443,14 +1673,14 @@ function orderCards() {
           <button onclick="setOrderStatus('${o.id}','despachado')" class="btn-amber px-3 py-1.5 text-xs rounded-lg"><i class="fa-solid fa-truck-fast"></i> Despachar</button>` : ''}
       </div>
     </div>`).join('');
-}
-function renderOrderList() { const el = document.getElementById('orders-list'); if (el) el.innerHTML = orderCards(); }
+    }
+    function renderOrderList() { const el = document.getElementById('orders-list'); if (el) el.innerHTML = orderCards(); }
 
-function viewOrders() {
-  const stCounts = { todos: db.orders.length };
-  Object.keys(ST).forEach(k => stCounts[k] = db.orders.filter(o => o.status === k).length);
-  const chips = [['todos', 'Todos'], ...Object.entries(ST).map(([k, v]) => [k, v.l])];
-  return `
+    function viewOrders() {
+      const stCounts = { todos: db.orders.length };
+      Object.keys(ST).forEach(k => stCounts[k] = db.orders.filter(o => o.status === k).length);
+      const chips = [['todos', 'Todos'], ...Object.entries(ST).map(([k, v]) => [k, v.l])];
+      return `
   <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
     <div>
       <div class="kicker mb-1">Oficina · Flujo de aprobación</div>
@@ -1466,11 +1696,11 @@ function viewOrders() {
     </div>
     <div id="orders-list" class="space-y-3">${orderCards()}</div>
   </div>`;
-}
+    }
 
-/* ============================ JORNADA + GESTIÓN DINÁMICA DE VENDEDORES (SOLO ADMIN) ============================ */
-function viewCrew() {
-  return `
+    /* ============================ JORNADA + GESTIÓN DINÁMICA DE VENDEDORES (SOLO ADMIN) ============================ */
+    function viewCrew() {
+      return `
   <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
     <div>
       <div class="kicker mb-1">Fuerza comercial · ${activeSellers().length} activos</div>
@@ -1478,13 +1708,13 @@ function viewCrew() {
     </div>
     <div id="crew-body">${crewBodyHTML()}</div>
   </div>`;
-}
+    }
 
-function crewBodyHTML() {
-  const sellers = getSellers();
-  const active  = activeSellers();
-  const today   = db.orders.filter(o => o.ts >= t0());
-  return `
+    function crewBodyHTML() {
+      const sellers = getSellers();
+      const active = activeSellers();
+      const today = db.orders.filter(o => o.ts >= t0());
+      return `
   <details id="sellerMgmt" class="card group mb-5" open>
     <summary class="flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
       <span class="flex items-center gap-2">
@@ -1527,20 +1757,20 @@ function crewBodyHTML() {
 
     <div class="space-y-0.5">
       ${sellers.length ? sellers.map((s, i) => sellerRowHTML(s, i)).join('')
-      : `<div class="text-sm text-steel-500 text-center py-6">No hay vendedores registrados. Agrega el primero con el formulario superior.</div>`}
+          : `<div class="text-sm text-steel-500 text-center py-6">No hay vendedores registrados. Agrega el primero con el formulario superior.</div>`}
     </div>
   </details>
 
   <div class="grid md:grid-cols-2 gap-4">
     ${active.length ? active.map(u => crewCardHTML(u, today)).join('')
-    : `<div class="card md:col-span-2 text-sm text-steel-500 text-center py-8">No hay vendedores activos. Reactiva o registra uno desde la gestión superior.</div>`}
+          : `<div class="card md:col-span-2 text-sm text-steel-500 text-center py-8">No hay vendedores activos. Reactiva o registra uno desde la gestión superior.</div>`}
   </div>`;
-}
+    }
 
-/* ============ LISTA DE VENDEDORES — FILAS DEL PANEL ADMIN ============ */
-function sellerRowHTML(s, i) {
-  const on = isSellerActive(s);
-  return `
+    /* ============ LISTA DE VENDEDORES — FILAS DEL PANEL ADMIN ============ */
+    function sellerRowHTML(s, i) {
+      const on = isSellerActive(s);
+      return `
   <div class="flex items-center gap-3 py-2.5 border-b border-steel-100 last:border-0">
     <div class="w-9 h-9 rounded-full ${on ? 'bg-navy-900 text-acc' : 'bg-steel-200 text-steel-500'} font-disp font-bold text-xs flex items-center justify-center shrink-0">${initialsOf(s.name)}</div>
     <div class="flex-1 min-w-0">
@@ -1566,16 +1796,16 @@ function sellerRowHTML(s, i) {
       </button>
     </div>
   </div>`;
-}
+    }
 
-const renderSellers = renderCrew;
+    const renderSellers = renderCrew;
 
-/* ==================== TARJETA DE JORNADA ==================== */
-function crewCardHTML(u, today) {
-  const j = db.jornada ? db.jornada[u.id] : null;
-  const on = u.active !== false && u.active !== 'false' && u.active !== 0;
-  const mine = today.filter(o => o.sellerId === u.id);
-  return `
+    /* ==================== TARJETA DE JORNADA ==================== */
+    function crewCardHTML(u, today) {
+      const j = db.jornada ? db.jornada[u.id] : null;
+      const on = u.active !== false && u.active !== 'false' && u.active !== 0;
+      const mine = today.filter(o => o.sellerId === u.id);
+      return `
   <div class="card">
     <div class="flex items-center gap-3">
       <div class="w-11 h-11 rounded-full bg-navy-900 text-acc font-disp font-bold flex items-center justify-center shrink-0">${initialsOf(u.name)}</div>
@@ -1607,49 +1837,49 @@ function crewCardHTML(u, today) {
       </button>
     </div>
   </div>`;
-}
+    }
 
-function renderCrew() {
-  const el = document.getElementById('crew-body');
-  if (!el) return;
-  const prevOpen = document.getElementById('sellerMgmt')?.open;
-  el.innerHTML = crewBodyHTML();
-  const d = document.getElementById('sellerMgmt');
-  if (d) d.open = (prevOpen === undefined) ? true : prevOpen;
-}
+    function renderCrew() {
+      const el = document.getElementById('crew-body');
+      if (!el) return;
+      const prevOpen = document.getElementById('sellerMgmt')?.open;
+      el.innerHTML = crewBodyHTML();
+      const d = document.getElementById('sellerMgmt');
+      if (d) d.open = (prevOpen === undefined) ? true : prevOpen;
+    }
 
-/* ============================ 15. ACCIONES DE NEGOCIO ============================ */
-function submitOrder() {
-  if (!cart.length) { toast('El pedido está vacío.', 'warn'); return; }
-  const name = ($('#c-name').value || '').trim();
-  if (!name) { toast('Indica el nombre del cliente.', 'warn'); return; }
-  const rif = ($('#c-rif').value || '').trim().toUpperCase();
-  if (rif && !RIF_OK(rif)) { toast('RIF inválido. Formato esperado: J-12345678-9', 'bad'); return; }
-  const t = cartTotals();
-  const number = 'TF26-' + String(db.counter).padStart(4, '0');
-  db.counter++;
-  db.orders.unshift({
-    id: uid(), number, sellerId: session.id, sellerName: session.name, ts: Date.now(),
-    client: {
-      name, rif,
-      contact: ($('#c-contact').value || '').trim(),
-      phone: ($('#c-phone').value || '').trim(),
-      address: ($('#c-address').value || '').trim()
-    },
-    items: cart.map(l => ({ ...l })),
-    subtotal: t.subtotal, tax: t.tax, total: t.total, status: 'pendiente',
-    history: [{ status: 'pendiente', ts: Date.now(), by: session.name }],
-    rejectReason: ''
-  });
-  logActivity('fa-file-invoice', `Pedido ${number} generado por ${session.name}`);
-  cart = []; saveCart(); saveDB();
-  toast(`Pedido <b>${number}</b> enviado a oficina.`, 'ok');
-  go('history');
-}
+    /* ============================ 15. ACCIONES DE NEGOCIO ============================ */
+    function submitOrder() {
+      if (!cart.length) { toast('El pedido está vacío.', 'warn'); return; }
+      const name = ($('#c-name').value || '').trim();
+      if (!name) { toast('Indica el nombre del cliente.', 'warn'); return; }
+      const rif = ($('#c-rif').value || '').trim().toUpperCase();
+      if (rif && !RIF_OK(rif)) { toast('RIF inválido. Formato esperado: J-12345678-9', 'bad'); return; }
+      const t = cartTotals();
+      const number = 'TF26-' + String(db.counter).padStart(4, '0');
+      db.counter++;
+      db.orders.unshift({
+        id: uid(), number, sellerId: session.id, sellerName: session.name, ts: Date.now(),
+        client: {
+          name, rif,
+          contact: ($('#c-contact').value || '').trim(),
+          phone: ($('#c-phone').value || '').trim(),
+          address: ($('#c-address').value || '').trim()
+        },
+        items: cart.map(l => ({ ...l })),
+        subtotal: t.subtotal, tax: t.tax, total: t.total, status: 'pendiente',
+        history: [{ status: 'pendiente', ts: Date.now(), by: session.name }],
+        rejectReason: ''
+      });
+      logActivity('fa-file-invoice', `Pedido ${number} generado por ${session.name}`);
+      cart = []; saveCart(); saveDB();
+      toast(`Pedido <b>${number}</b> enviado a oficina.`, 'ok');
+      go('history');
+    }
 
-function openOrderDetail(id) {
-  const o = db.orders.find(x => x.id === id); if (!o) return;
-  openModal(`
+    function openOrderDetail(id) {
+      const o = db.orders.find(x => x.id === id); if (!o) return;
+      openModal(`
     <div class="p-6 space-y-5 overflow-y-auto">
       <div class="flex items-start justify-between gap-3">
         <div>
@@ -1701,216 +1931,216 @@ function openOrderDetail(id) {
       </div>
       <button onclick="closeModal()" class="btn-navy w-full py-2.5 text-sm rounded-xl">Cerrar</button>
     </div>`, true);
-}
-
-function setOrderStatus(id, st) {
-  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
-  const o = db.orders.find(x => x.id === id); if (!o) return;
-  const doIt = () => {
-    if (st === 'despachado') {
-      o.items.forEach(i => {
-        const p = prod(i.code);
-        if (p) p.stock = Math.max(0, p.stock - i.qty);
-      });
     }
-    o.status = st;
-    o.history.push({ status: st, ts: Date.now(), by: session.name });
-    logActivity(st === 'aprobado' ? 'fa-circle-check' : st === 'despachado' ? 'fa-truck-fast' : 'fa-circle-xmark',
-      `Pedido ${o.number} ${ST[st].l.toLowerCase()} por ${session.name}`);
-    saveDB(); renderView(); setNav();
-    toast(`Pedido <b>${esc(o.number)}</b> marcado como ${ST[st].l}.`, st === 'rechazado' ? 'warn' : 'ok');
-  };
-  if (st === 'rechazado')       confirmDialog('Rechazar pedido',  `¿Rechazar <b>${esc(o.number)}</b> de ${esc((o.client || {}).name || 'cliente')}?`, 'Rechazar', doIt, true);
-  else if (st === 'despachado') confirmDialog('Despachar pedido', `¿Confirmar despacho de <b>${esc(o.number)}</b>? Se descontará el stock del inventario.`, 'Despachar', doIt, false);
-  else doIt();
-}
 
-function adjustStock(code, delta) {
-  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
-  const p = prod(code); if (!p) return;
-  p.stock = Math.max(0, p.stock + delta);
-  saveDB(); renderInventoryList();
-}
+    function setOrderStatus(id, st) {
+      if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
+      const o = db.orders.find(x => x.id === id); if (!o) return;
+      const doIt = () => {
+        if (st === 'despachado') {
+          o.items.forEach(i => {
+            const p = prod(i.code);
+            if (p) p.stock = Math.max(0, p.stock - i.qty);
+          });
+        }
+        o.status = st;
+        o.history.push({ status: st, ts: Date.now(), by: session.name });
+        logActivity(st === 'aprobado' ? 'fa-circle-check' : st === 'despachado' ? 'fa-truck-fast' : 'fa-circle-xmark',
+          `Pedido ${o.number} ${ST[st].l.toLowerCase()} por ${session.name}`);
+        saveDB(); renderView(); setNav();
+        toast(`Pedido <b>${esc(o.number)}</b> marcado como ${ST[st].l}.`, st === 'rechazado' ? 'warn' : 'ok');
+      };
+      if (st === 'rechazado') confirmDialog('Rechazar pedido', `¿Rechazar <b>${esc(o.number)}</b> de ${esc((o.client || {}).name || 'cliente')}?`, 'Rechazar', doIt, true);
+      else if (st === 'despachado') confirmDialog('Despachar pedido', `¿Confirmar despacho de <b>${esc(o.number)}</b>? Se descontará el stock del inventario.`, 'Despachar', doIt, false);
+      else doIt();
+    }
 
-function exportDB() {
-  if (!isAdmin()) return;
-  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `truckfilters-backup-${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(a.href);
-  toast('Respaldo exportado correctamente.', 'ok');
-}
+    function adjustStock(code, delta) {
+      if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
+      const p = prod(code); if (!p) return;
+      p.stock = Math.max(0, p.stock + delta);
+      saveDB(); renderInventoryList();
+    }
 
-function importDB(input) {
-  if (!isAdmin()) return;
-  const f = input.files && input.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = () => {
-    try {
-      const d = JSON.parse(r.result);
-      if (!Array.isArray(d.products) || !Array.isArray(d.orders)) throw new Error('formato inválido');
-      db = d;
-      migrateDB();
+    function exportDB() {
+      if (!isAdmin()) return;
+      const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `truckfilters-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(a.href);
+      toast('Respaldo exportado correctamente.', 'ok');
+    }
+
+    function importDB(input) {
+      if (!isAdmin()) return;
+      const f = input.files && input.files[0]; if (!f) return;
+      const r = new FileReader();
+      r.onload = () => {
+        try {
+          const d = JSON.parse(r.result);
+          if (!Array.isArray(d.products) || !Array.isArray(d.orders)) throw new Error('formato inválido');
+          db = d;
+          migrateDB();
+          saveDB();
+          queueCloudSync(0);
+          renderView(); setNav();
+          toast('Respaldo importado y sincronizado.', 'ok');
+        } catch (e) {
+          console.error(e);
+          toast('Archivo inválido. Usa un respaldo generado por esta aplicación.', 'bad');
+        }
+      };
+      r.readAsText(f);
+      input.value = '';
+    }
+
+    function resetDB() {
+      if (!isAdmin()) return;
+      confirmDialog('Reiniciar datos', 'Se restaurará la base de datos de fábrica en este equipo Y en la nube. Los cambios actuales se perderán.', 'Reiniciar', () => {
+        db = seedDB(); saveDB(); queueCloudSync(0); renderView(); setNav();
+        toast('Datos restaurados y sincronizados.', 'ok');
+      }, true);
+    }
+
+    /* ==================== REGISTRO/EDICIÓN DE VENDEDOR ==================== */
+    function saveSellerForm(e) {
+      e.preventDefault();
+      if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
+      const name = ($('#s-name').value || '').trim();
+      const id = ($('#s-id').value || '').trim();
+      const zone = ($('#s-zone').value || '').trim();
+      const pin = ($('#s-pin').value || '').trim();
+      const editId = $('#s-editId').value;
+
+      if (!name || !id || !zone || !pin) { toast('Completa todos los campos.', 'warn'); return; }
+      if (!/^\d{4}$/.test(pin)) { toast('El PIN debe tener exactamente 4 dígitos.', 'warn'); return; }
+      if (getSellers().some(s => s.id.toLowerCase() === id.toLowerCase() && s.id !== editId)) {
+        toast('Esa cédula/ID ya está asignada a otro vendedor.', 'warn'); return;
+      }
+      if (getSellers().some(s => s.name.toLowerCase() === name.toLowerCase() && s.id !== editId)) {
+        toast('Ya existe un vendedor con ese nombre (se usa para el login).', 'warn'); return;
+      }
+
+      if (editId) {
+        const s = sellerById(editId);
+        if (!s) { toast('El vendedor a editar ya no existe.', 'bad'); return; }
+        if (editId !== id && db.jornada[editId]) { db.jornada[id] = db.jornada[editId]; delete db.jornada[editId]; }
+        s.name = name; s.id = id; s.zone = zone; s.pin = pin;
+        if (s.active === undefined) s.active = true;
+        logActivity('fa-user-pen', `Vendedor actualizado: ${name} (${id})`);
+        saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); ensureSellerMgmtOpen();
+        toast(`Ficha de <b>${esc(name)}</b> actualizada y sincronizada.`, 'ok');
+      } else {
+        getSellers().push({ id, name, zone, pin, active: true });
+        logActivity('fa-user-plus', `Vendedor registrado: ${name} (${id}) — zona ${zone}`);
+        saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); ensureSellerMgmtOpen();
+        toast(`<b>${esc(name)}</b> registrado y activo. Ya puede iniciar sesión con su PIN desde cualquier teléfono.`, 'ok');
+      }
+    }
+
+    function ensureSellerMgmtOpen() {
+      const d = document.getElementById('sellerMgmt');
+      if (d) d.open = true;
+    }
+
+    function resetSellerForm() {
+      const form = document.getElementById('sellerForm'); if (form) form.reset();
+      $('#s-editId').value = '';
+      const idInput = $('#s-id'); if (idInput) idInput.placeholder = nextSellerId();
+      const btn = $('#sellerSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Registrar vendedor';
+    }
+
+    function editSeller(i) {
+      if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
+      const s = getSellers()[i]; if (!s) return;
+      const d = document.getElementById('sellerMgmt'); if (d) d.open = true;
+      $('#s-editId').value = s.id;
+      $('#s-name').value = s.name;
+      $('#s-id').value = s.id;
+      $('#s-zone').value = s.zone;
+      $('#s-pin').value = s.pin;
+      const btn = $('#sellerSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Actualizar vendedor';
+      const form = document.getElementById('sellerForm');
+      if (form) setTimeout(() => form.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+      toast(`Editando a <b>${esc(s.name)}</b>.`, 'info');
+    }
+
+    function purgeSellerById(id) {
+      const s = sellerById(id);
+      const name = s ? s.name : id;
+      const idx = getSellers().findIndex(x => x.id === id);
+      if (idx >= 0) getSellers().splice(idx, 1);
+      if (db.jornada) delete db.jornada[id];
+
+      const before = db.orders.length;
+      db.orders = db.orders.filter(o => !(o.sellerId === id && o.ts >= t0()));
+      const removed = before - db.orders.length;
+
+      logActivity('fa-user-minus', `Vendedor eliminado: ${name} — jornada y ${removed} pedido(s) de hoy borrados`);
       saveDB();
       queueCloudSync(0);
-      renderView(); setNav();
-      toast('Respaldo importado y sincronizado.', 'ok');
-    } catch(e) {
-      console.error(e);
-      toast('Archivo inválido. Usa un respaldo generado por esta aplicación.', 'bad');
-    }
-  };
-  r.readAsText(f);
-  input.value = '';
-}
-
-function resetDB() {
-  if (!isAdmin()) return;
-  confirmDialog('Reiniciar datos', 'Se restaurará la base de datos de fábrica en este equipo Y en la nube. Los cambios actuales se perderán.', 'Reiniciar', () => {
-    db = seedDB(); saveDB(); queueCloudSync(0); renderView(); setNav();
-    toast('Datos restaurados y sincronizados.', 'ok');
-  }, true);
-}
-
-/* ==================== REGISTRO/EDICIÓN DE VENDEDOR ==================== */
-function saveSellerForm(e) {
-  e.preventDefault();
-  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
-  const name  = ($('#s-name').value  || '').trim();
-  const id    = ($('#s-id').value    || '').trim();
-  const zone  = ($('#s-zone').value  || '').trim();
-  const pin   = ($('#s-pin').value   || '').trim();
-  const editId = $('#s-editId').value;
-
-  if (!name || !id || !zone || !pin) { toast('Completa todos los campos.', 'warn'); return; }
-  if (!/^\d{4}$/.test(pin)) { toast('El PIN debe tener exactamente 4 dígitos.', 'warn'); return; }
-  if (getSellers().some(s => s.id.toLowerCase() === id.toLowerCase() && s.id !== editId)) {
-    toast('Esa cédula/ID ya está asignada a otro vendedor.', 'warn'); return;
-  }
-  if (getSellers().some(s => s.name.toLowerCase() === name.toLowerCase() && s.id !== editId)) {
-    toast('Ya existe un vendedor con ese nombre (se usa para el login).', 'warn'); return;
-  }
-
-  if (editId) {
-    const s = sellerById(editId);
-    if (!s) { toast('El vendedor a editar ya no existe.', 'bad'); return; }
-    if (editId !== id && db.jornada[editId]) { db.jornada[id] = db.jornada[editId]; delete db.jornada[editId]; }
-    s.name = name; s.id = id; s.zone = zone; s.pin = pin;
-    if (s.active === undefined) s.active = true;
-    logActivity('fa-user-pen', `Vendedor actualizado: ${name} (${id})`);
-    saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); ensureSellerMgmtOpen();
-    toast(`Ficha de <b>${esc(name)}</b> actualizada y sincronizada.`, 'ok');
-  } else {
-    getSellers().push({ id, name, zone, pin, active: true });
-    logActivity('fa-user-plus', `Vendedor registrado: ${name} (${id}) — zona ${zone}`);
-    saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); ensureSellerMgmtOpen();
-    toast(`<b>${esc(name)}</b> registrado y activo. Ya puede iniciar sesión con su PIN desde cualquier teléfono.`, 'ok');
-  }
-}
-
-function ensureSellerMgmtOpen() {
-  const d = document.getElementById('sellerMgmt');
-  if (d) d.open = true;
-}
-
-function resetSellerForm() {
-  const form = document.getElementById('sellerForm'); if (form) form.reset();
-  $('#s-editId').value = '';
-  const idInput = $('#s-id'); if (idInput) idInput.placeholder = nextSellerId();
-  const btn = $('#sellerSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Registrar vendedor';
-}
-
-function editSeller(i) {
-  if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
-  const s = getSellers()[i]; if (!s) return;
-  const d = document.getElementById('sellerMgmt'); if (d) d.open = true;
-  $('#s-editId').value = s.id;
-  $('#s-name').value = s.name;
-  $('#s-id').value   = s.id;
-  $('#s-zone').value = s.zone;
-  $('#s-pin').value  = s.pin;
-  const btn = $('#sellerSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Actualizar vendedor';
-  const form = document.getElementById('sellerForm');
-  if (form) setTimeout(() => form.scrollIntoView({ behavior:'smooth', block:'center' }), 60);
-  toast(`Editando a <b>${esc(s.name)}</b>.`, 'info');
-}
-
-function purgeSellerById(id) {
-  const s = sellerById(id);
-  const name = s ? s.name : id;
-  const idx = getSellers().findIndex(x => x.id === id);
-  if (idx >= 0) getSellers().splice(idx, 1);
-  if (db.jornada) delete db.jornada[id];
-
-  const before = db.orders.length;
-  db.orders = db.orders.filter(o => !(o.sellerId === id && o.ts >= t0()));
-  const removed = before - db.orders.length;
-
-  logActivity('fa-user-minus', `Vendedor eliminado: ${name} — jornada y ${removed} pedido(s) de hoy borrados`);
-  saveDB();
-  queueCloudSync(0);
-  resetSellerForm();
-  renderCrew();
-  return removed;
-}
-
-function deleteCrewCard(id) {
-  deleteSellerById(id);
-}
-
-function deleteSeller(i) {
-  if (!isAdmin()) {
-    toast('Acción exclusiva de Administración.', 'bad');
-    return;
-  }
-  const s = getSellers()[i];
-  if (!s) return;
-  deleteSellerById(s.id || s.name);
-}
-
-function deleteSellerById(identifier) {
-  if (!isAdmin()) {
-    toast('Acción exclusiva de Administración.', 'bad');
-    return;
-  }
-
-  const s = sellerById(identifier);
-  const name = s ? (s.name || s.id) : identifier;
-  const sId = s ? (s.id || s.name) : identifier;
-
-  confirmDialog('Eliminar vendedor', `¿Eliminar a <b>${esc(name)}</b> definitivamente? Se eliminará de la lista y se cerrará su jornada.`, 'Eliminar', () => {
-    let index = db.sellers.findIndex(item => item.id === sId || item.name === name);
-    if (index !== -1) {
-      db.sellers.splice(index, 1);
+      resetSellerForm();
+      renderCrew();
+      return removed;
     }
 
-    if (db.jornada) delete db.jornada[sId];
-    if (db.orders) {
-      db.orders = db.orders.filter(o => o.sellerId !== sId && o.sellerName !== name);
+    function deleteCrewCard(id) {
+      deleteSellerById(id);
     }
 
-    saveDB();
-    queueCloudSync(0);
-    renderCrew();
-    toast(`Vendedor <b>${esc(name)}</b> eliminado con éxito.`, 'ok');
-  }, true);
-}
+    function deleteSeller(i) {
+      if (!isAdmin()) {
+        toast('Acción exclusiva de Administración.', 'bad');
+        return;
+      }
+      const s = getSellers()[i];
+      if (!s) return;
+      deleteSellerById(s.id || s.name);
+    }
 
-/* ============================ 17. VISTAS — INVENTARIO / RESPALDO ============================ */
-function invRows() {
-  const q = (ui.invQ || '').toLowerCase().trim();
-  const list = (db.products || PRODUCTS).filter(p => !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
-  if (!list.length) {
-    return `<div class="card text-center py-10 space-y-2">
+    function deleteSellerById(identifier) {
+      if (!isAdmin()) {
+        toast('Acción exclusiva de Administración.', 'bad');
+        return;
+      }
+
+      const s = sellerById(identifier);
+      const name = s ? (s.name || s.id) : identifier;
+      const sId = s ? (s.id || s.name) : identifier;
+
+      confirmDialog('Eliminar vendedor', `¿Eliminar a <b>${esc(name)}</b> definitivamente? Se eliminará de la lista y se cerrará su jornada.`, 'Eliminar', () => {
+        let index = db.sellers.findIndex(item => item.id === sId || item.name === name);
+        if (index !== -1) {
+          db.sellers.splice(index, 1);
+        }
+
+        if (db.jornada) delete db.jornada[sId];
+        if (db.orders) {
+          db.orders = db.orders.filter(o => o.sellerId !== sId && o.sellerName !== name);
+        }
+
+        saveDB();
+        queueCloudSync(0);
+        renderCrew();
+        toast(`Vendedor <b>${esc(name)}</b> eliminado con éxito.`, 'ok');
+      }, true);
+    }
+
+    /* ============================ 17. VISTAS — INVENTARIO / RESPALDO ============================ */
+    function invRows() {
+      const q = (ui.invQ || '').toLowerCase().trim();
+      const list = (db.products || PRODUCTS).filter(p => !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
+      if (!list.length) {
+        return `<div class="card text-center py-10 space-y-2">
       <i class="fa-solid fa-box-open text-3xl text-steel-300"></i>
       <p class="text-sm text-steel-500">Sin referencias que coincidan.</p>
     </div>`;
-  }
-  return list.map(p => {
-    const stCls = p.stock <= 0 ? 'bg-red-50 text-red-700 border-red-300' : p.stock < 20 ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-emerald-50 text-emerald-700 border-emerald-300';
-    return `
+      }
+      return list.map(p => {
+        const stCls = p.stock <= 0 ? 'bg-red-50 text-red-700 border-red-300' : p.stock < 20 ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-emerald-50 text-emerald-700 border-emerald-300';
+        return `
     <div class="card flex flex-col sm:flex-row sm:items-center gap-4">
       <div class="blueprint border border-steel-200 rounded-lg p-2 shrink-0 self-start sm:self-center">${techSVG(p)}</div>
       <div class="flex-1 min-w-0">
@@ -1929,12 +2159,12 @@ function invRows() {
         </div>
       </div>
     </div>`;
-  }).join('');
-}
-function renderInventoryList() { const el = document.getElementById('inv-list'); if (el) el.innerHTML = invRows(); }
+      }).join('');
+    }
+    function renderInventoryList() { const el = document.getElementById('inv-list'); if (el) el.innerHTML = invRows(); }
 
-function viewInventory() {
-  return `
+    function viewInventory() {
+      return `
   <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
     <div>
       <div class="kicker mb-1">Almacén · Galpón 4, Valencia</div>
@@ -1950,18 +2180,18 @@ function viewInventory() {
       <p class="text-xs text-navy-700">El stock se descuenta automáticamente cuando un pedido pasa a <b>Despachado</b>. Cada ajuste se sincroniza con la nube y llega a los teléfonos al instante.</p>
     </div>
   </div>`;
-}
+    }
 
-function viewBackup() {
-  const sizeKB = (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1);
-  const ci = cloudInfo();
-  const cards = [
-    { ic:'fa-file-invoice', l:'Pedidos',    v: db.orders.length,                 cls:'bg-navy-800 text-white' },
-    { ic:'fa-filter',       l:'Productos',  v: (db.products || PRODUCTS).length, cls:'bg-navy-700 text-white' },
-    { ic:'fa-users',        l:'Vendedores', v: getSellers().length,              cls:'bg-steel-500 text-white' },
-    { ic:'fa-hard-drive',   l:'Tamaño',     v: sizeKB + ' KB',                   cls:'bg-acc text-navy-950' }
-  ];
-  return `
+    function viewBackup() {
+      const sizeKB = (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1);
+      const ci = cloudInfo();
+      const cards = [
+        { ic: 'fa-file-invoice', l: 'Pedidos', v: db.orders.length, cls: 'bg-navy-800 text-white' },
+        { ic: 'fa-filter', l: 'Productos', v: (db.products || PRODUCTS).length, cls: 'bg-navy-700 text-white' },
+        { ic: 'fa-users', l: 'Vendedores', v: getSellers().length, cls: 'bg-steel-500 text-white' },
+        { ic: 'fa-hard-drive', l: 'Tamaño', v: sizeKB + ' KB', cls: 'bg-acc text-navy-950' }
+      ];
+      return `
   <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
     <div>
       <div class="kicker mb-1">Datos · Firebase Firestore + localStorage</div>
@@ -2021,60 +2251,60 @@ function viewBackup() {
       </div>
     </div>
   </div>`;
-}
+    }
 
-/* ============================ 18. GESTIÓN CATÁLOGO VISUAL ============================ */
-const STORAGE_KEY = 'carsev_filters_catalog_v1';
-const defaultFilters = [];
+    /* ============================ 18. GESTIÓN CATÁLOGO VISUAL ============================ */
+    const STORAGE_KEY = 'carsev_filters_catalog_v1';
+    const defaultFilters = [];
 
-let pendingFilterPhoto = null;
+    let pendingFilterPhoto = null;
 
-function saveFilters(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); if (!applyingRemote) queueCloudSync(); }
-function saveFiltersSilent(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
-function getFilters() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr)) return arr; }
-  } catch(e){}
-  saveFiltersSilent(defaultFilters);
-  return [...defaultFilters];
-}
+    function saveFilters(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); if (!applyingRemote) queueCloudSync(); }
+    function saveFiltersSilent(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+    function getFilters() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr)) return arr; }
+      } catch (e) { }
+      saveFiltersSilent(defaultFilters);
+      return [...defaultFilters];
+    }
 
-function filterImgSrc(f) {
-  if (f && f.img) return f.img;
-  if (f && f.imagen) return 'assets/img/filters/' + f.imagen;
-  return FILTER_IMG_FALLBACK;
-}
+    function filterImgSrc(f) {
+      if (f && f.img) return f.img;
+      if (f && f.imagen) return 'assets/img/filters/' + f.imagen;
+      return FILTER_IMG_FALLBACK;
+    }
 
-function renderFilterCatalogGrid() {
-  const grid = document.getElementById('filterCatalogGrid');
-  if (!grid) return;
-  const admin = isAdmin();
-  const all = getFilters().map((f, i) => ({ ...f, __i: i }));
-  const q = (ui.filterQ || '').toLowerCase().trim();
-  const list = all.filter(f => !q ||
-    (f.codigo      || '').toLowerCase().includes(q) ||
-    (f.aplicacion  || '').toLowerCase().includes(q) ||
-    (f.dimensiones || '').toLowerCase().includes(q));
+    function renderFilterCatalogGrid() {
+      const grid = document.getElementById('filterCatalogGrid');
+      if (!grid) return;
+      const admin = isAdmin();
+      const all = getFilters().map((f, i) => ({ ...f, __i: i }));
+      const q = (ui.filterQ || '').toLowerCase().trim();
+      const list = all.filter(f => !q ||
+        (f.codigo || '').toLowerCase().includes(q) ||
+        (f.aplicacion || '').toLowerCase().includes(q) ||
+        (f.dimensiones || '').toLowerCase().includes(q));
 
-  const count = document.getElementById('filterCount');
-  if (count) {
-    count.textContent = all.length === 0 ? 'Sin referencias'
-      : q ? `${list.length} de ${all.length} coincidencia${list.length === 1 ? '' : 's'}`
-          : `${all.length} referencia${all.length === 1 ? '' : 's'}`;
-  }
-  const clr = document.getElementById('filterClear');
-  if (clr) clr.classList.toggle('hidden', !q);
+      const count = document.getElementById('filterCount');
+      if (count) {
+        count.textContent = all.length === 0 ? 'Sin referencias'
+          : q ? `${list.length} de ${all.length} coincidencia${list.length === 1 ? '' : 's'}`
+            : `${all.length} referencia${all.length === 1 ? '' : 's'}`;
+      }
+      const clr = document.getElementById('filterClear');
+      if (clr) clr.classList.toggle('hidden', !q);
 
-  if (!list.length) {
-    grid.innerHTML = `<div class="card col-span-full text-center py-10 space-y-2">
+      if (!list.length) {
+        grid.innerHTML = `<div class="card col-span-full text-center py-10 space-y-2">
       <i class="fa-solid fa-images text-3xl text-steel-300"></i>
       <p class="text-sm text-steel-500">${q ? 'Sin resultados para "<b>' + esc(ui.filterQ) + '</b>".' : 'Aún no hay filtros registrados.' + (admin ? ' Agrega el primero desde la gestión inferior.' : '')}</p>
     </div>`;
-    return;
-  }
+        return;
+      }
 
-  grid.innerHTML = list.map(f => `
+      grid.innerHTML = list.map(f => `
     <article class="card p-0 overflow-hidden flex flex-col group">
       <button onclick="openFilterPhoto(${f.__i})" class="relative block bg-steel-50 border-b border-steel-100 overflow-hidden" title="Ampliar fotografía" aria-label="Ampliar fotografía de ${esc(f.codigo)}">
         <img src="${filterImgSrc(f)}" alt="Filtro ${esc(f.codigo)}" loading="lazy"
@@ -2096,11 +2326,11 @@ function renderFilterCatalogGrid() {
         </div>
       </div>
     </article>`).join('');
-}
+    }
 
-function openFilterPhoto(i) {
-  const f = getFilters()[i]; if (!f) return;
-  openModal(`
+    function openFilterPhoto(i) {
+      const f = getFilters()[i]; if (!f) return;
+      openModal(`
     <div class="p-5 space-y-4">
       <div class="flex items-start justify-between gap-3">
         <div>
@@ -2129,108 +2359,108 @@ function openFilterPhoto(i) {
         <button onclick="closeModal()" class="btn-navy px-4 py-2 text-xs rounded-xl flex-1">Cerrar</button>
       </div>
     </div>`);
-}
+    }
 
-function handleFilterPhoto(input) {
-  if (!isAdmin()) return;
-  const file = input.files && input.files[0];
-  if (!file) return;
-  if (!/^image\//.test(file.type)) { toast('Selecciona un archivo de imagen (JPG o PNG).', 'warn'); input.value = ''; return; }
-  const r = new FileReader();
-  r.onload = () => {
-    const img = new Image();
-    img.onload = () => {
-      const MAX = 800;
-      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-      const cv = document.createElement('canvas');
-      cv.width  = Math.round(img.width  * scale);
-      cv.height = Math.round(img.height * scale);
-      try { cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); pendingFilterPhoto = cv.toDataURL('image/jpeg', 0.85); }
-      catch(err) { pendingFilterPhoto = r.result; }
-      const pv = document.getElementById('imgPreview'); if (pv) pv.src = pendingFilterPhoto;
-      toast('Foto lista. Se guardará con la ficha.', 'ok', 2200);
-    };
-    img.onerror = () => { toast('No se pudo procesar la imagen.', 'bad'); };
-    img.src = r.result;
-  };
-  r.readAsDataURL(file);
-  input.value = '';
-}
+    function handleFilterPhoto(input) {
+      if (!isAdmin()) return;
+      const file = input.files && input.files[0];
+      if (!file) return;
+      if (!/^image\//.test(file.type)) { toast('Selecciona un archivo de imagen (JPG o PNG).', 'warn'); input.value = ''; return; }
+      const r = new FileReader();
+      r.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 800;
+          const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+          const cv = document.createElement('canvas');
+          cv.width = Math.round(img.width * scale);
+          cv.height = Math.round(img.height * scale);
+          try { cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); pendingFilterPhoto = cv.toDataURL('image/jpeg', 0.85); }
+          catch (err) { pendingFilterPhoto = r.result; }
+          const pv = document.getElementById('imgPreview'); if (pv) pv.src = pendingFilterPhoto;
+          toast('Foto lista. Se guardará con la ficha.', 'ok', 2200);
+        };
+        img.onerror = () => { toast('No se pudo procesar la imagen.', 'bad'); };
+        img.src = r.result;
+      };
+      r.readAsDataURL(file);
+      input.value = '';
+    }
 
-function handleSaveFilter(e) {
-  e.preventDefault();
-  if (!isAdmin()) { toast('Gestión de filtros exclusiva de Administración.', 'bad'); return; }
-  const f = {
-    codigo:      ($('#inputCodigo').value      || '').trim().toUpperCase(),
-    aplicacion:  ($('#inputAplicacion').value  || '').trim(),
-    dimensiones: ($('#inputDimensiones').value || '').trim(),
-    imagen:      ($('#inputImagen').value      || '').trim()
-  };
-  if (!f.codigo || !f.aplicacion || !f.dimensiones) { toast('Completa código, aplicación y dimensiones.', 'warn'); return; }
-  const list = getFilters();
-  const idxRaw = $('#editIndex').value;
-  const editing = idxRaw !== '' && list[+idxRaw];
-  f.img = pendingFilterPhoto || (editing ? list[+idxRaw].img || null : null);
-  if (editing) list[+idxRaw] = f; else list.push(f);
-  saveFilters(list);
-  resetAdminForm();
-  renderFilterCatalogGrid();
-  toast(editing ? `Ficha <b>${esc(f.codigo)}</b> actualizada y sincronizada.` : `Filtro <b>${esc(f.codigo)}</b> agregado y visible para todos los vendedores.`, 'ok');
-}
+    function handleSaveFilter(e) {
+      e.preventDefault();
+      if (!isAdmin()) { toast('Gestión de filtros exclusiva de Administración.', 'bad'); return; }
+      const f = {
+        codigo: ($('#inputCodigo').value || '').trim().toUpperCase(),
+        aplicacion: ($('#inputAplicacion').value || '').trim(),
+        dimensiones: ($('#inputDimensiones').value || '').trim(),
+        imagen: ($('#inputImagen').value || '').trim()
+      };
+      if (!f.codigo || !f.aplicacion || !f.dimensiones) { toast('Completa código, aplicación y dimensiones.', 'warn'); return; }
+      const list = getFilters();
+      const idxRaw = $('#editIndex').value;
+      const editing = idxRaw !== '' && list[+idxRaw];
+      f.img = pendingFilterPhoto || (editing ? list[+idxRaw].img || null : null);
+      if (editing) list[+idxRaw] = f; else list.push(f);
+      saveFilters(list);
+      resetAdminForm();
+      renderFilterCatalogGrid();
+      toast(editing ? `Ficha <b>${esc(f.codigo)}</b> actualizada y sincronizada.` : `Filtro <b>${esc(f.codigo)}</b> agregado y visible para todos los vendedores.`, 'ok');
+    }
 
-function resetAdminForm() {
-  const form = document.getElementById('filterAdminForm'); if (form) form.reset();
-  $('#editIndex').value = '';
-  pendingFilterPhoto = null;
-  const pv = document.getElementById('imgPreview'); if (pv) pv.src = FILTER_IMG_FALLBACK;
-  const btn = $('#filterSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar filtro';
-}
+    function resetAdminForm() {
+      const form = document.getElementById('filterAdminForm'); if (form) form.reset();
+      $('#editIndex').value = '';
+      pendingFilterPhoto = null;
+      const pv = document.getElementById('imgPreview'); if (pv) pv.src = FILTER_IMG_FALLBACK;
+      const btn = $('#filterSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar filtro';
+    }
 
-function editFilter(i) {
-  if (!isAdmin()) { toast('Gestión de filtros exclusiva de Administración.', 'bad'); return; }
-  const f = getFilters()[i]; if (!f) return;
-  const d = document.getElementById('filterFormDetails'); if (d) d.open = true;
-  $('#editIndex').value = String(i);
-  $('#inputCodigo').value      = f.codigo      || '';
-  $('#inputAplicacion').value  = f.aplicacion  || '';
-  $('#inputDimensiones').value = f.dimensiones || '';
-  $('#inputImagen').value      = f.imagen      || '';
-  pendingFilterPhoto = f.img || null;
-  const pv = document.getElementById('imgPreview'); if (pv) pv.src = filterImgSrc(f);
-  const btn = $('#filterSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Actualizar filtro';
-  const form = document.getElementById('filterAdminForm');
-  if (form) setTimeout(() => form.scrollIntoView({ behavior:'smooth', block:'center' }), 60);
-  toast(`Editando <b>${esc(f.codigo)}</b>.`, 'info');
-}
+    function editFilter(i) {
+      if (!isAdmin()) { toast('Gestión de filtros exclusiva de Administración.', 'bad'); return; }
+      const f = getFilters()[i]; if (!f) return;
+      const d = document.getElementById('filterFormDetails'); if (d) d.open = true;
+      $('#editIndex').value = String(i);
+      $('#inputCodigo').value = f.codigo || '';
+      $('#inputAplicacion').value = f.aplicacion || '';
+      $('#inputDimensiones').value = f.dimensiones || '';
+      $('#inputImagen').value = f.imagen || '';
+      pendingFilterPhoto = f.img || null;
+      const pv = document.getElementById('imgPreview'); if (pv) pv.src = filterImgSrc(f);
+      const btn = $('#filterSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Actualizar filtro';
+      const form = document.getElementById('filterAdminForm');
+      if (form) setTimeout(() => form.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+      toast(`Editando <b>${esc(f.codigo)}</b>.`, 'info');
+    }
 
-function deleteFilter(i) {
-  if (!isAdmin()) { toast('Gestión de filtros exclusiva de Administración.', 'bad'); return; }
-  const list = getFilters(); const f = list[i]; if (!f) return;
-  confirmDialog('Eliminar filtro', `¿Eliminar <b>${esc(f.codigo)}</b> (${esc(f.aplicacion)}) del catálogo visual? Se quitará también de los teléfonos.`, 'Eliminar', () => {
-    list.splice(i, 1); saveFilters(list); renderFilterCatalogGrid();
-    toast('Filtro eliminado del catálogo.', 'warn');
-  }, true);
-}
+    function deleteFilter(i) {
+      if (!isAdmin()) { toast('Gestión de filtros exclusiva de Administración.', 'bad'); return; }
+      const list = getFilters(); const f = list[i]; if (!f) return;
+      confirmDialog('Eliminar filtro', `¿Eliminar <b>${esc(f.codigo)}</b> (${esc(f.aplicacion)}) del catálogo visual? Se quitará también de los teléfonos.`, 'Eliminar', () => {
+        list.splice(i, 1); saveFilters(list); renderFilterCatalogGrid();
+        toast('Filtro eliminado del catálogo.', 'warn');
+      }, true);
+    }
 
-/* ============================ 19. MOTOR DE RENDERIZADO ============================ */
-function renderView() {
-  const v = $('#view');
-  if (!v) return;
-  if (session && !navIdsFor().includes(ui.view)) ui.view = defaultView();
-  let html = '';
-  try {
-    switch (ui.view) {
-      case 'catalog':   html = viewCatalog();   break;
-      case 'tools':     html = viewTools();     break;
-      case 'cart':      html = viewCart();      break;
-      case 'history':   html = viewHistory();   break;
-      case 'dash':      html = viewDash();      break;
-      case 'orders':    html = viewOrders();    break;
-      case 'crew':      html = viewCrew();      break;
-      case 'inventory': html = viewInventory(); break;
-      case 'backup':    html = viewBackup();    break;
-      default:
-        html = `
+    /* ============================ 19. MOTOR DE RENDERIZADO ============================ */
+    function renderView() {
+      const v = $('#view');
+      if (!v) return;
+      if (session && !navIdsFor().includes(ui.view)) ui.view = defaultView();
+      let html = '';
+      try {
+        switch (ui.view) {
+          case 'catalog': html = viewCatalog(); break;
+          case 'tools': html = viewTools(); break;
+          case 'cart': html = viewCart(); break;
+          case 'history': html = viewHistory(); break;
+          case 'dash': html = viewDash(); break;
+          case 'orders': html = viewOrders(); break;
+          case 'crew': html = viewCrew(); break;
+          case 'inventory': html = viewInventory(); break;
+          case 'backup': html = viewBackup(); break;
+          default:
+            html = `
         <div class="p-4 pb-24 max-w-3xl mx-auto">
           <div class="card text-center space-y-3">
             <i class="fa-solid fa-map-signs text-3xl text-steel-300"></i>
@@ -2238,10 +2468,10 @@ function renderView() {
             <button onclick="go(defaultView())" class="btn-navy px-4 py-2 text-xs rounded-xl mx-auto">Volver al inicio</button>
           </div>
         </div>`;
-    }
-  } catch (err) {
-    console.error('renderView("' + ui.view + '"):', err);
-    html = `
+        }
+      } catch (err) {
+        console.error('renderView("' + ui.view + '"):', err);
+        html = `
     <div class="p-4 pb-24 max-w-3xl mx-auto">
       <div class="bg-white border border-red-200 rounded-2xl shadow-sm p-5 text-center space-y-3">
         <i class="fa-solid fa-bug text-3xl text-red-300"></i>
@@ -2249,25 +2479,26 @@ function renderView() {
         <button onclick="renderView()" class="btn-line px-4 py-2 text-xs rounded-xl mx-auto"><i class="fa-solid fa-rotate-right"></i> Reintentar</button>
       </div>
     </div>`;
-  }
-  v.innerHTML = html;
-  if (ui.view === 'catalog') renderFilterCatalogGrid();
-}
+      }
+      v.innerHTML = html;
+      if (ui.view === 'catalog') renderFilterCatalogGrid();
+    }
 
-/* ============================ 20. ARRANQUE ============================ */
-function initApp() {
-  cloudInit();
-  loadDB();
-  if (!session || !validateSession()) { renderLogin(); return; }
-  loadCart();
-  if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
-  renderShell();
-  renderView();
-}
+    /* ============================ 20. ARRANQUE ============================ */
+    function initApp() {
+      cloudInit();
+      loadDB();
+      if (!session || !validateSession()) { renderLogin(); return; }
+      loadCart();
+      if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
+      renderShell();
+      renderView();
+    }
 
-document.addEventListener('DOMContentLoaded', initApp);
-window.addEventListener('online',  () => { updateConnChip(); if (cloudReady) { cloudPull(); if (cloudDirty) queueCloudSync(500); } });
-window.addEventListener('offline', updateConnChip);
-</script>
+    document.addEventListener('DOMContentLoaded', initApp);
+    window.addEventListener('online', () => { updateConnChip(); if (cloudReady) { cloudPull(); if (cloudDirty) queueCloudSync(500); } });
+    window.addEventListener('offline', updateConnChip);
+  </script>
 </body>
+
 </html>
