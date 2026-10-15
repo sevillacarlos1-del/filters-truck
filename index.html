@@ -1785,44 +1785,75 @@
 
     const renderSellers = renderCrew;
 
-    /* ==================== TARJETA DE JORNADA ==================== */
-    function crewCardHTML(u, today) {
-      const j = db.jornada ? db.jornada[u.id] : null;
-      const on = u.active !== false && u.active !== 'false' && u.active !== 0;
-      const mine = today.filter(o => o.sellerId === u.id);
-      return `
+    /* ==================== TARJETA DE JORNADA (vendedor) ====================
+   1) Papelera: confirm() nativo → deleteCrewCard(u.id) → renderCrew()
+   2) Estado de cuenta: botón dinámico Activo/Inactivo → toggleSellerActive(u.id)
+   3) Jornada: datos intactos (Inicio/Fin) + toggleJornada(u.id) Finalizar/Iniciar
+   NOTA: si tu deleteCrewCard() ya muestra su propio confirmDialog, quítalo de
+   allí para no pedir doble confirmación (aquí ya se pide con confirm()). */
+
+/* Papelera de la tarjeta: confirmación nativa + borrado + refresco inmediato */
+function onCrewCardDelete(id) {
+  const s = sellerById(id) || {};
+  if (!confirm('¿Eliminar al vendedor ' + (s.name || id) + '? Se limpiarán su jornada y sus pedidos de hoy. Esta acción no se puede deshacer.')) return;
+  deleteCrewCard(id);
+  renderCrew(); /* refresco inmediato de la vista (inocuo si deleteCrewCard ya repintó) */
+}
+
+function crewCardHTML(u, today) {
+  const j     = db.jornada ? db.jornada[u.id] : null;
+  const jOpen = !!(j && j.start && !j.end);                                   /* jornada abierta hoy */
+  const on    = u.active !== false && u.active !== 'false' && u.active !== 0;  /* cuenta activa */
+  const mine  = today.filter(o => o.sellerId === u.id);
+
+  return `
   <div class="card">
     <div class="flex items-center gap-3">
-      <div class="w-11 h-11 rounded-full bg-navy-900 text-acc font-disp font-bold flex items-center justify-center shrink-0">${initialsOf(u.name)}</div>
+      <div class="w-11 h-11 rounded-full bg-navy-900 text-acc font-disp font-bold flex items-center justify-center text-base shrink-0">${esc(u.name).charAt(0)}</div>
       <div class="flex-1 min-w-0">
         <div class="font-bold text-sm text-navy-900 truncate">${esc(u.name)}</div>
-        <div class="text-[11px] text-steel-500">${esc(u.id)} · ${esc(u.zone)} <span class="font-mono text-amber-600 font-bold ml-1">· PIN: ${esc(u.pin || 'S/N')}</span></div>
+        <div class="text-[11px] text-steel-500">${esc(u.id)} · ${esc(u.zone)}</div>
       </div>
-      <button type="button" onclick="toggleJornada('${esc(u.id)}')" class="tag border cursor-pointer shrink-0 transition-all ${on ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-steel-100 text-steel-500 border-steel-200'}" title="Toca para cambiar estado">
-        <span class="w-2 h-2 rounded-full ${on ? 'bg-emerald-500 xlive-dot' : 'bg-steel-400'} mr-1"></span>${on ? 'En ruta' : 'Fuera de ruta'}
+      <!-- 2) Estado de la cuenta: etiqueta dinámica Activo/Inactivo -->
+      <button type="button" onclick="toggleSellerActive('${esc(u.id)}')"
+              class="${on ? 'btn-ok' : 'btn-line'} text-xs py-1 px-3 rounded-lg shrink-0"
+              title="${on ? 'Cuenta activa — clic para desactivar' : 'Cuenta inactiva — clic para activar'}">
+        <i class="fa-solid ${on ? 'fa-user-check' : 'fa-user-slash'}"></i> ${on ? 'Activo' : 'Inactivo'}
       </button>
-      <button type="button" onclick="if(confirm('¿Deseas eliminar este vendedor?')) { deleteCrewCard('${esc(u.id)}'); renderCrew(); }" class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 flex items-center justify-center">
+      <!-- 1) Papelera: confirm() → deleteCrewCard → renderCrew -->
+      <button type="button" onclick="onCrewCardDelete('${esc(u.id)}')"
+              class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 flex items-center justify-center shrink-0"
+              title="Eliminar vendedor, su jornada de hoy y sus pedidos de hoy"
+              aria-label="Eliminar ${esc(u.name)}">
         <i class="fa-solid fa-trash text-[10px]"></i>
       </button>
     </div>
+
+    <!-- 3) Datos de la jornada: intactos -->
     <div class="grid grid-cols-2 gap-3 mt-4">
       <div class="bg-steel-50 border border-steel-200 rounded-xl py-2 text-center">
         <div class="kicker">Inicio</div>
-        <div class="text-sm font-bold font-mono text-navy-900">${j && j.start ? fT(j.start) : '—'}</div>
+        <div class="text-sm font-bold font-mono text-navy-900">${j && j.start ? fT(j.start) : '--:--'}</div>
       </div>
       <div class="bg-steel-50 border border-steel-200 rounded-xl py-2 text-center">
         <div class="kicker">Fin</div>
-        <div class="text-sm font-bold font-mono text-navy-900">${j && j.end ? fT(j.end) : '—'}</div>
+        <div class="text-sm font-bold font-mono text-navy-900">${j && j.end ? fT(j.end) : '--:--'}</div>
       </div>
     </div>
-    <div class="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-steel-100">
-      <span class="text-xs text-steel-500">Pedidos hoy: <b class="text-navy-900">${mine.length}</b> · ${money(mine.reduce((a, o) => a + o.total, 0))}</span>
-      <button type="button" onclick="toggleSellerActive('${esc(u.id)}')" class="btn-line text-xs py-1 px-3">
-  ${on ? '<i class="fa-solid fa-user-slash mr-1"></i>Desactivar' : '<i class="fa-solid fa-user-check mr-1"></i>Activar'}
-</button>
+
+    <div class="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-steel-200">
+      <span class="text-xs text-steel-500 flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full ${jOpen ? 'bg-emerald-500 xlive-dot' : 'bg-steel-400'}"></span>
+        Pedidos hoy: <b class="text-navy-900">${mine.length}</b>
+      </span>
+      <!-- 3) toggleJornada: etiqueta según jornada abierta, no según estado de cuenta -->
+      <button type="button" onclick="toggleJornada('${esc(u.id)}')"
+              class="${jOpen ? 'btn-line' : 'btn-navy'} text-xs py-1 px-3 rounded-lg">
+        ${jOpen ? '<i class="fa-solid fa-flag-checkered"></i> Finalizar' : '<i class="fa-solid fa-flag"></i> Iniciar'}
+      </button>
     </div>
   </div>`;
-    }
+}
 
     function renderCrew() {
       const el = document.getElementById('crew-body');
