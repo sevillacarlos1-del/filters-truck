@@ -1792,15 +1792,36 @@
    NOTA: si tu deleteCrewCard() ya muestra su propio confirmDialog, quítalo de
    allí para no pedir doble confirmación (aquí ya se pide con confirm()). */
 
-   /* Papelera de la tarjeta: confirmación + borrado directo + sincronización + refresco */
+  /* Papelera de la tarjeta: confirmación nativa + borrado directo + persistencia y sync */
 function onCrewCardDelete(id) {
     const s = sellerById(id) || {};
     const nombre = s.name || id;
     
-    // Si el usuario cancela la confirmación, se sale
     if (!confirm('¿Eliminar al vendedor ' + nombre + '?\nSe limpiarán su jornada y sus pedidos de hoy. Esta acción no se puede deshacer.')) {
         return;
     }
+    
+    // 1. Filtrar el arreglo de vendedores directamente
+    if (db.sellers && Array.isArray(db.sellers)) {
+        db.sellers = db.sellers.filter(x => x.id !== id && x.name !== id && x.id != id);
+    }
+    
+    // 2. Borrar también su registro de jornada si lo tiene
+    if (db.jornada && db.jornada[id]) {
+        delete db.jornada[id];
+    }
+    
+    // 3. Guardar cambios y sincronizar con la nube de inmediato
+    if (typeof saveDB === 'function') saveDB();
+    if (typeof queueCloudSync === 'function') queueCloudSync(0);
+    
+    // 4. Repintar la vista de administración al instante
+    if (typeof renderCrew === 'function') {
+        renderCrew();
+    } else if (typeof renderSellers === 'function') {
+        renderSellers();
+    }
+}
     
     // 1. Ejecutar el borrado real
     if (typeof deleteCrewCard === 'function') {
