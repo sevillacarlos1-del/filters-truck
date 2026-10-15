@@ -1007,23 +1007,20 @@
 function renderLogin() {
     if (typeof loadDB === 'function') loadDB();
 
-    /* 1) Lectura segura de db.sellers */
+    /* 1) Lectura directa y segura de db.sellers con respaldo */
     const sellers = (db && Array.isArray(db.sellers)) ? db.sellers : [];
 
-    /* 2) Filtro ultra flexible: por defecto activo si no tiene la propiedad active o no está explícitamente apagado */
-    const activos = sellers.filter(s => {
-        if (!s) return false;
-        if (s.active === false || s.active === 'false' || s.active === 0 || s.active === '0') return false;
-        return true;
-    });
+    /* 2) Filtro robusto que detecta activos por defecto o de forma explícita */
+    const isOn = s => !!s && (
+        s.active === true || s.active === 1 || s.active === 'true' ||
+        s.active === undefined || s.active === null
+    );
+    const activos = sellers.filter(isOn);
 
-    /* 3) Generación segura de opciones usando s.id como value y s.name */
-    const opts = activos.length ? activos.map(s => {
-        const sid = s.id || '';
-        const sname = s.name || s.id || '';
-        const szone = s.zone ? ' — ' + s.zone : '';
-        return `<option value="${sid}">${sname}${szone}</option>`;
-    }).join('') : '';
+    /* 3) Generación de opciones blindada */
+    const opts = activos.length ? activos.map(s => 
+        `<option value="${s.id}">${s.name || s.id}${s.zone ? ' — ' + s.zone : ''}</option>`
+    ).join('') : '';
 
     const online = navigator.onLine;
     const rifText = (typeof EMPRESA !== 'undefined' && EMPRESA && EMPRESA.rif) ? EMPRESA.rif : '';
