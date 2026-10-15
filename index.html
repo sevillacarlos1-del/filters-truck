@@ -1004,91 +1004,65 @@
       }, false);
     }
 
-    function renderLogin() {
-  loadDB(); /* estado local al día (por si llegó un sync pendiente) */
+ function renderLogin() {
+    if (typeof loadDB === 'function') loadDB();
 
-  /* 1) Lectura directa y segura de db.sellers (respaldo: arreglo vacío) */
-  const sellers = (db && Array.isArray(db.sellers)) ? db.sellers : [];
+    // 1. Lectura segura y directa desde db.sellers
+    const sellers = (db && Array.isArray(db.sellers)) ? db.sellers : [];
+    
+    // 2. Filtro flexible de activos (acepta true, 1, undefined o null)
+    const activos = sellers.filter(s => {
+        if (s.active === undefined || s.active === null) return true;
+        return s.active !== false && s.active !== 'false' && s.active !== 0 && s.active !== '0';
+    });
 
-  /* 2) Criterio único de "Activo": true, 1, 'true' o indefinido/null (default activo).
-        Solo false, 'false' y 0 desactivan. */
-  const isOn = s => !!s && (
-    s.active === true || s.active === 1 || s.active === 'true' ||
-    s.active === undefined || s.active === null
-  );
-  const activos = sellers.filter(isOn);
+    // 3. Generación de opciones usando s.id como valor exacto
+    const opts = activos.length ? activos.map(s => `<option value="${s.id}">${s.name || s.id}</option>`).join('') : '';
 
-  /* 3) opts SOLO con vendedores activos — value = s.id (doLogin ya busca por id o nombre) */
-  const opts = activos.map(s =>
-    `<option value="${esc(s.id)}">${esc(s.name || s.id)}${s.zone ? ' — ' + esc(s.zone) : ''}</option>`
-  ).join('');
-
-  const online = navigator.onLine;
-
-  $('#app').innerHTML = `
-  <div class="min-h-screen blueprint flex flex-col items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-lg border border-steel-200 overflow-hidden anim-up">
-      <div class="hazard h-2"></div>
-      <div class="p-6 sm:p-8 space-y-6">
+    // Estructura HTML completa del login móvil
+    return `
+    <div class="hazard h-2"></div>
+    <div class="p-6 sm:p-8 space-y-6">
         <div class="text-center space-y-2">
-          <div class="inline-block p-3 bg-navy-900 rounded-2xl shadow-hardsm">${logoSVG(48)}</div>
-          <h1 class="text-xl font-bold text-navy-900 font-disp tracking-wide">TRUCK FILTERS, C.A.</h1>
-          <p class="text-xs text-steel-500">Sistema Comercial · Filtros industriales para transporte pesado</p>
+            <div class="inline-block p-3 bg-navy-900 rounded-2xl shadow-hardsm">${LOGO_SVG || ''}</div>
+            <h1 class="text-xl font-bold text-navy-900 font-disp tracking-wide">TRUCK-C</h1>
+            <p class="text-xs text-steel-500">Sistema Comercial - Filtros industriales</p>
         </div>
         <div class="space-y-4">
-          <div>
-            <label class="lbl">Rol de acceso</label>
-            <select id="login-role" class="input" onchange="onLoginRoleChange()">
-              <option value="seller">Vendedor / Comercial (móvil)</option>
-              <option value="admin">Administración / Oficina</option>
-            </select>
-          </div>
-          <div id="seller-pick">
-            <div class="flex items-center justify-between mb-1">
-              <label class="lbl mb-0" for="login-name">Vendedor</label>
-              <span class="text-[10px] text-steel-500 font-semibold">${activos.length} activo(s) de ${sellers.length}</span>
+            <div>
+                <label class="lbl">Rol de acceso</label>
+                <select id="login-role" class="input" onchange="onLoginRoleChange()">
+                    <option value="seller">Vendedor / Comercial (móvil)</option>
+                    <option value="admin">Administración / Oficina</option>
+                </select>
             </div>
-            <select id="login-name" class="input" ${activos.length ? '' : 'disabled'}>
-              ${activos.length ? opts : '<option value="">Sin vendedores registrados</option>'}
-            </select>
-            <p id="seller-hint" class="text-[10px] text-steel-400 mt-1.5">¿Sin cuenta o sin clave? Solicítala a Administración (Jornada → Gestión de vendedores).</p>
-          </div>
-          <div>
-            <label class="lbl" id="pass-lbl" for="login-pass">Clave de acceso (PIN) *</label>
-            <input type="password" id="login-pass" class="input font-mono tracking-widest text-lg text-center" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-          </div>
-          <button onclick="doLogin()" class="btn-navy w-full py-3 rounded-xl font-bold text-sm" ${activos.length ? '' : 'disabled'}>
-            <i class="fa-solid fa-right-to-bracket"></i> Ingresar al sistema
-          </button>
-        </div>
-        <div class="flex items-center justify-between text-[11px] text-steel-400 border-t border-steel-100 pt-4">
-          <span class="font-mono">${esc(EMPRESA.rif)}</span>
-          <span class="flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full ${online ? 'bg-emerald-500' : 'bg-red-500'}"></span>
-            ${online ? 'En línea' : 'Sin conexión'}
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>`;
 
-  /* 4) Respaldo en caliente: si local no tiene activos, consulta Firestore UNA sola vez.
-        El guard __loginCloudTried evita bucles infinitos de re-render. */
-  if (!activos.length && !window.__loginCloudTried && cloudReady && navigator.onLine) {
-    window.__loginCloudTried = true;
-    const r = cloudRef();
-    if (r) {
-      r.get({ source: 'server' }).then(snap => {
-        if (snap.exists) {
-          applyRemote(snap.data()); /* normaliza, persiste y repinta (renderCurrent) */
-          const now = (db && Array.isArray(db.sellers)) ? db.sellers.filter(isOn) : [];
-          if (now.length && !session) renderLogin(); /* re-render solo si ahora sí hay activos */
-        }
-      }).catch(err => console.warn('Sync login:', err));
-    }
-  } else if (activos.length) {
-    window.__loginCloudTried = false; /* resetea el guard para la próxima vez que se necesite */
-  }
+            <div id="seller-pick">
+                <div class="flex items-center justify-between mb-1">
+                    <label class="lbl mb-0" for="login-name">Vendedor</label>
+                    <span class="text-[10px] text-steel-500 font-semibold">${activos.length} activos</span>
+                </div>
+                <select id="login-name" class="input">
+                    ${activos.length ? opts : '<option value="">Sin vendedores registrados</option>'}
+                </select>
+                <p id="seller-hint" class="text-[10px] text-steel-400 mt-1.5">¿Sin cuenta o saldo? Contacta administración.</p>
+            </div>
+
+            <div>
+                <label class="lbl" id="pass-lbl" for="login-pass">Clave de acceso (PIN)</label>
+                <input type="password" id="login-pass" class="input font-mono tracking-widest" placeholder="••••">
+            </div>
+            
+            <button onclick="doLogin()" class="btn-navy w-full py-3 rounded-xl font-semibold flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-right-to-bracket"></i>
+                <span>Ingresar al sistema</span>
+            </button>
+        </div>
+        <div class="flex items-center justify-between text-[11px] text-steel-400 pt-2 border-t border-steel-200">
+            <span class="font-mono">${esc(EMPRESA.rif || '')}</span>
+            <span class="font-mono">v1.0</span>
+        </div>
+    </div>`;
 }
 
     /* ============================ 10. SHELL / NAVEGACIÓN ============================ */
