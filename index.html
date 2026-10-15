@@ -902,24 +902,9 @@
       logActivity(nowActive ? 'fa-user-check' : 'fa-user-slash',
         `${nowActive ? 'Vendedor reactivado' : 'Vendedor desactivado'}: ${s.name}`);
       saveDB();
-      if (typeof renderCrew === 'function') renderCrew();
-      toast(`Vendedor <b>${esc(s.name)}</b> ahora está <b>${nowActive ? 'Activo' : 'Inactivo'}</b>.`, nowActive ? 'ok' : 'warn');
-    }
-
-    /* Función auxiliar de alternancia de estado desde la tabla */
-    function toggleSellerActive(identifier) {
-      if (!isAdmin()) {
-        toast('Acción exclusiva para Administración.', 'bad');
-        return;
-      }
-      const sellersList = getSellers();
-      let s = null;
-      if (typeof identifier === 'number') s = sellersList[identifier];
-      else s = sellersList.find(x => x.id === identifier || x.name === identifier);
-
-      if (s) {
-        toggleJornada(s.id || s.name);
-      }
+  queueCloudSync(0); // <--- ¡Esta es la que falta por agregar!
+  if (typeof renderCrew === 'function') renderCrew();
+  toast(`Vendedor <b>${esc(s.name)}</b> ahora está <b>${nowActive ? 'Activo' : 'Inactivo'}</b>`, 'ok');
     }
 
     /* REQUISITO: Validación en doLogin() que reconoce al vendedor activo de inmediato y permite ingreso por PIN */
