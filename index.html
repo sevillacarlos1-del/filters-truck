@@ -827,16 +827,18 @@ function renderLogin() {
               <option value="admin">Administración / Oficina</option>
             </select>
           </div>
+         
           <div id="seller-pick">
-            <div class="flex items-center justify-between mb-1">
-              <label class="lbl mb-0" for="login-name">Vendedor</label>
-              <span class="text-[10px] text-steel-500 font-semibold">${activos.length} activo(s) de ${sellers.length}</span>
-            </div>
-            ${sellers.length
-              ? `<select id="login-name" class="input">${opts}</select>`
-              : `<select id="login-name" class="input" disabled><option>Sin vendedores registrados</option></select>`}
-            <p id="seller-hint" class="text-[10px] text-steel-400 mt-1.5">¿Sin cuenta o sin clave? Solicítala a Administración (Jornada → Gestión de vendedores).</p>
-          </div>
+  <div class="flex items-center justify-between mb-1">
+    <label class="lbl mb-0" for="login-name">Vendedor</label>
+    <span class="text-[10px] text-steel-500 font-semibold">${activos.length} activos</span>
+  </div>
+  <select id="login-name" class="input">
+    ${sellers.length ? opts : '<option value="">Sin vendedores registrados</option>'}
+  </select>
+  <p id="seller-hint" class="text-[10px] text-steel-400 mt-1.5">¿Sin cuenta o saldo?</p>
+</div>
+         
           <div>
             <label class="lbl" id="pass-lbl" for="login-pass">Clave de acceso (PIN) *</label>
             <input type="password" id="login-pass" class="input font-mono tracking-widest text-lg text-center" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
