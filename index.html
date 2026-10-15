@@ -1005,25 +1005,27 @@
     }
 
     function renderLogin() {
-      loadDB();
-      
-      if (!(db.sellers && db.sellers.length) && cloudReady && navigator.onLine) {
-    cloudRef().get({ source: 'server' }).then(snap => {
-      if (snap.exists) {
-        applyRemote(snap.data());
-        renderLogin();
-      }
-    }).catch(err => console.warn('Sync login error:', err));
-  }
-      const online = navigator.onLine;
-    const sellers = (db && Array.isArray(db.sellers)) ? db.sellers : (typeof getSellers === 'function' ? getSellers() : []);
-    const activos = sellers.filter(s => s.active !== false && s.active !== 'false' && s.active !== 0);
-      const opts = sellers.map(u => {
-        const on = u.active !== false && u.active !== 'false' && u.active !== 0;
-        return `<option value="${esc(u.name)}" ${!on ? 'class="text-steel-400 font-normal"' : 'class="font-semibold text-navy-900"'}>${esc(u.name)} — ${esc(u.zone)}${!on ? ' (Inactivo - requiere activación)' : ''}</option>`;
-      }).join('');
+  loadDB(); /* estado local al día (por si llegó un sync pendiente) */
 
-      $('#app').innerHTML = `
+  /* 1) Lectura directa y segura de db.sellers (respaldo: arreglo vacío) */
+  const sellers = (db && Array.isArray(db.sellers)) ? db.sellers : [];
+
+  /* 2) Criterio único de "Activo": true, 1, 'true' o indefinido/null (default activo).
+        Solo false, 'false' y 0 desactivan. */
+  const isOn = s => !!s && (
+    s.active === true || s.active === 1 || s.active === 'true' ||
+    s.active === undefined || s.active === null
+  );
+  const activos = sellers.filter(isOn);
+
+  /* 3) opts SOLO con vendedores activos — value = s.id (doLogin ya busca por id o nombre) */
+  const opts = activos.map(s =>
+    `<option value="${esc(s.id)}">${esc(s.name || s.id)}${s.zone ? ' — ' + esc(s.zone) : ''}</option>`
+  ).join('');
+
+  const online = navigator.onLine;
+
+  $('#app').innerHTML = `
   <div class="min-h-screen blueprint flex flex-col items-center justify-center p-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow-lg border border-steel-200 overflow-hidden anim-up">
       <div class="hazard h-2"></div>
@@ -1041,23 +1043,21 @@
               <option value="admin">Administración / Oficina</option>
             </select>
           </div>
-         
           <div id="seller-pick">
-  <div class="flex items-center justify-between mb-1">
-    <label class="lbl mb-0" for="login-name">Vendedor</label>
-    <span class="text-[10px] text-steel-500 font-semibold">${activos.length} activos</span>
-  </div>
-  <select id="login-name" class="input">
-    ${sellers.length ? opts : '<option value="">Sin vendedores registrados</option>'}
-  </select>
-  <p id="seller-hint" class="text-[10px] text-steel-400 mt-1.5">¿Sin cuenta o saldo?</p>
-</div>
-         
+            <div class="flex items-center justify-between mb-1">
+              <label class="lbl mb-0" for="login-name">Vendedor</label>
+              <span class="text-[10px] text-steel-500 font-semibold">${activos.length} activo(s) de ${sellers.length}</span>
+            </div>
+            <select id="login-name" class="input" ${activos.length ? '' : 'disabled'}>
+              ${activos.length ? opts : '<option value="">Sin vendedores registrados</option>'}
+            </select>
+            <p id="seller-hint" class="text-[10px] text-steel-400 mt-1.5">¿Sin cuenta o sin clave? Solicítala a Administración (Jornada → Gestión de vendedores).</p>
+          </div>
           <div>
             <label class="lbl" id="pass-lbl" for="login-pass">Clave de acceso (PIN) *</label>
             <input type="password" id="login-pass" class="input font-mono tracking-widest text-lg text-center" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
           </div>
-          <button onclick="doLogin()" class="btn-navy w-full py-3 rounded-xl font-bold text-sm">
+          <button onclick="doLogin()" class="btn-navy w-full py-3 rounded-xl font-bold text-sm" ${activos.length ? '' : 'disabled'}>
             <i class="fa-solid fa-right-to-bracket"></i> Ingresar al sistema
           </button>
         </div>
@@ -1071,7 +1071,25 @@
       </div>
     </div>
   </div>`;
+
+  /* 4) Respaldo en caliente: si local no tiene activos, consulta Firestore UNA sola vez.
+        El guard __loginCloudTried evita bucles infinitos de re-render. */
+  if (!activos.length && !window.__loginCloudTried && cloudReady && navigator.onLine) {
+    window.__loginCloudTried = true;
+    const r = cloudRef();
+    if (r) {
+      r.get({ source: 'server' }).then(snap => {
+        if (snap.exists) {
+          applyRemote(snap.data()); /* normaliza, persiste y repinta (renderCurrent) */
+          const now = (db && Array.isArray(db.sellers)) ? db.sellers.filter(isOn) : [];
+          if (now.length && !session) renderLogin(); /* re-render solo si ahora sí hay activos */
+        }
+      }).catch(err => console.warn('Sync login:', err));
     }
+  } else if (activos.length) {
+    window.__loginCloudTried = false; /* resetea el guard para la próxima vez que se necesite */
+  }
+}
 
     /* ============================ 10. SHELL / NAVEGACIÓN ============================ */
     const NAV = {
