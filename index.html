@@ -2063,8 +2063,7 @@ function crewCardHTML(u, today) {
       if (editId) {
         const s = sellerById(editId);
         if (!s) { toast('El vendedor a editar ya no existe.', 'bad'); return; }
-        if (editId !== id && db.jornada[editId]) { db.jornada[id] = db.jornada[editId]; delete db.jornada[editId]; }
-        s.name = name; s.id = id; s.zone = zone; s.pin = pin;
+      s.name = name; s.id = id; s.zone = zone; s.pin = pin; s.active = true;  
         if (s.active === undefined) s.active = true;
         logActivity('fa-user-pen', `Vendedor actualizado: ${name} (${id})`);
         saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); ensureSellerMgmtOpen();
