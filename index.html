@@ -1016,9 +1016,8 @@
     }).catch(err => console.warn('Sync login error:', err));
   }
       const online = navigator.onLine;
-      const sellers = getSellers();
-      const activos = activeSellers();
-
+    const sellers = (db && Array.isArray(db.sellers)) ? db.sellers : (typeof getSellers === 'function' ? getSellers() : []);
+    const activos = sellers.filter(s => s.active !== false && s.active !== 'false' && s.active !== 0);
       const opts = sellers.map(u => {
         const on = u.active !== false && u.active !== 'false' && u.active !== 0;
         return `<option value="${esc(u.name)}" ${!on ? 'class="text-steel-400 font-normal"' : 'class="font-semibold text-navy-900"'}>${esc(u.name)} — ${esc(u.zone)}${!on ? ' (Inactivo - requiere activación)' : ''}</option>`;
