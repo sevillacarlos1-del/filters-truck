@@ -2469,17 +2469,36 @@
       if (ui.view === 'catalog') renderFilterCatalogGrid();
     }
 
-    /* ============================ 20. ARRANQUE ============================ */
-    function initApp() {
-      cloudInit();
-      loadDB();
-      if (!session || !validateSession()) { renderLogin(); return; }
-      loadCart();
-      if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
-      renderShell();
-      renderView();
+   /* ==================== 20. ARRANQUE ==================== */
+function initApp() {
+    cloudInit();
+    loadDB();
+    
+    // Listener en tiempo real para sincronizar la nube instantáneamente
+    if (typeof cloudRef === 'function') {
+      try {
+        cloudRef().onSnapshot(snap => {
+          if (snap.exists) {
+            applyRemote(snap.data());
+            if (typeof renderLogin === 'function' && document.getElementById('login-name')) {
+              renderLogin();
+            }
+            if (typeof renderCrew === 'function' && document.getElementById('crew-body')) {
+              renderCrew();
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('No se pudo inicializar el listener en tiempo real:', e);
+      }
     }
 
+    if (!session || !validateSession()) { renderLogin(); return; }
+    loadCart();
+    if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
+    renderShell();
+    renderView();
+}
     document.addEventListener('DOMContentLoaded', initApp);
     window.addEventListener('online', () => { updateConnChip(); if (cloudReady) { cloudPull(); if (cloudDirty) queueCloudSync(500); } });
     window.addEventListener('offline', updateConnChip);
