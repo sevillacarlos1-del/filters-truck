@@ -1007,30 +1007,38 @@
 function renderLogin() {
     if (typeof loadDB === 'function') loadDB();
 
-    /* 1) Lectura directa y segura de db.sellers */
+    /* 1) Lectura segura de db.sellers */
     const sellers = (db && Array.isArray(db.sellers)) ? db.sellers : [];
 
-    /* 2) Filtro flexible de activos */
-    const isOn = s => !!s && (
-        s.active === true || s.active === 1 || s.active === 'true' ||
-        s.active === undefined || s.active === null
-    );
-    const activos = sellers.filter(isOn);
+    /* 2) Filtro ultra flexible: por defecto activo si no tiene la propiedad active o no está explícitamente apagado */
+    const activos = sellers.filter(s => {
+        if (!s) return false;
+        if (s.active === false || s.active === 'false' || s.active === 0 || s.active === '0') return false;
+        return true;
+    });
 
-    /* 3) Generación segura de opciones usando s.id como value */
-    const opts = activos.length ? activos.map(s => 
-        `<option value="${s.id}">${s.name || s.id}${s.zone ? ' — ' + s.zone : ''}</option>`
-    ).join('') : '';
+    /* 3) Generación segura de opciones usando s.id como value y s.name */
+    const opts = activos.length ? activos.map(s => {
+        const sid = s.id || '';
+        const sname = s.name || s.id || '';
+        const szone = s.zone ? ' — ' + s.zone : '';
+        return `<option value="${sid}">${sname}${szone}</option>`;
+    }).join('') : '';
 
     const online = navigator.onLine;
+    const rifText = (typeof EMPRESA !== 'undefined' && EMPRESA && EMPRESA.rif) ? EMPRESA.rif : '';
+    const logoHtml = (typeof logoSVG === 'function') ? logoSVG(48) : (typeof LOGO_SVG !== 'undefined' ? LOGO_SVG : '');
 
-    document.getElementById('app').innerHTML = `
+    const appEl = document.getElementById('app');
+    if (!appEl) return;
+
+    appEl.innerHTML = `
     <div class="min-h-screen blueprint flex flex-col items-center justify-center p-4">
         <div class="w-full max-w-md bg-white rounded-2xl shadow-lg border border-steel-200 overflow-hidden anim-up">
             <div class="hazard h-2"></div>
             <div class="p-6 sm:p-8 space-y-6">
                 <div class="text-center space-y-2">
-                    <div class="inline-block p-3 bg-navy-900 rounded-2xl shadow-hardsm">${typeof logoSVG === 'function' ? logoSVG(48) : (LOGO_SVG || '')}</div>
+                    <div class="inline-block p-3 bg-navy-900 rounded-2xl shadow-hardsm">${logoHtml}</div>
                     <h1 class="text-xl font-bold text-navy-900 font-disp tracking-wide">TRUCK FILTERS, C.A.</h1>
                     <p class="text-xs text-steel-500">Sistema Comercial · Filtros industriales para transporte pesado</p>
                 </div>
@@ -1061,7 +1069,7 @@ function renderLogin() {
                     </button>
                 </div>
                 <div class="flex items-center justify-between text-[11px] text-steel-400 border-t border-steel-100 pt-4">
-                    <span class="font-mono">${typeof esc === 'function' ? esc(EMPRESA.rif || '') : (EMPRESA.rif || '')}</span>
+                    <span class="font-mono">${rifText}</span>
                     <span class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full ${online ? 'bg-emerald-500' : 'bg-red-500'}"></span>
                         ${online ? 'En línea' : 'Sin conexión'}
