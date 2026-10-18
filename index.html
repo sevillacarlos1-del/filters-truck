@@ -1006,7 +1006,8 @@ function onLoginRoleChange() {
     }
 
 function renderLogin() {
-  const currentRole = sessionStorage.getItem('preferred_login_role') || 'admin';  
+  const roleSelect = document.getElementById('login-role');
+  const currentRole = roleSelect ? roleSelect.value : (sessionStorage.getItem('preferred_login_role') || 'admin');
   if (typeof loadDB === 'function') loadDB();
 
     /* 1) Lectura directa y segura de db.sellers con respaldo */
