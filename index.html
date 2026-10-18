@@ -2559,13 +2559,19 @@
 
     /* ============================ 20. ARRANQUE ============================ */
     function initApp() {
-      cloudInit(); /* Firestore + tiempo real + caché offline (PWA intacta) */
-      if (!session || !validateSession()) { renderLogin(); return; }
-      loadCart();
-      if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
-      renderShell();
-      renderView();
+    cloudInit(); /* Firestore + tiempo real + caché offline (PWA intacta) */
+    
+    // Forzar la red de Firebase al arrancar para evitar el bloqueo offline
+    if (typeof firebase !== 'undefined' && firebase.firestore) {
+        firebase.firestore().enableNetwork().catch(() => {});
     }
+
+    if (!session || !validateSession()) { renderLogin(); return; }
+    loadCart();
+    if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
+    renderShell();
+    renderView();
+}
 
     document.addEventListener('DOMContentLoaded', initApp);
     window.addEventListener('online', () => { updateConnChip(); if (cloudReady) { cloudPull(); if (cloudDirty) queueCloudSync(500); } });
