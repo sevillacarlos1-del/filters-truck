@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="es">
 
 <head>
@@ -342,6 +342,9 @@
 
     /* ============================ 1. CONFIGURACIÓN ============================ */
     const EMPRESA = { name: 'Truck Filters, c.a.', rif: 'J-40127144-8', addr: 'Av. Principal, Zona Industrial Municipal Norte, Galpón 4, Valencia — Edo. Carabobo', tel: '+58 241-500.22.44' };
+    /* Versión visible en el login: permite verificar en el teléfono que el
+       archivo desplegado es ESTA compilación (diagnóstico de caché/PWA). */
+    const APP_VERSION = 'v2.3-fix';
 
     const DB_KEY = 'tf_db_v2';
     const SESS_KEY = 'tf_session_v2';
@@ -463,14 +466,22 @@
 
     const cloudRef = () => (cloudReady && FS) ? FS.doc(CLOUD_DOC) : null;
 
-    function cloudPull() {
+    function cloudPull(retry = 0) {
       const r = cloudRef(); if (!r) return;
       setCloudStatus('sync');
       r.get().then(snap => {
         if (snap.exists) applyRemote(snap.data());
         else queueCloudSync(0);
         setCloudStatus('ok');
-      }).catch(err => { console.error('cloudPull:', err); setCloudStatus('off'); });
+        window.__cloudFailStreak = 0;
+      }).catch(err => {
+        console.error('cloudPull:', err);
+        setCloudStatus('off');
+        window.__cloudFailStreak = (window.__cloudFailStreak || 0) + 1;
+        /* Reintento automático: la primera descarga en móvil puede fallar
+           por red lenta o por reglas de Firestore. 3 intentos con espera. */
+        if (retry < 3) setTimeout(() => cloudPull(retry + 1), 2500 * (retry + 1));
+      });
     }
 
     function cloudSubscribe() {
@@ -541,8 +552,19 @@
       const rev = Date.now();
       lastCloudRev = rev;
       r.set({ db, carsev: getFilters(), rev, writer: CLIENT_ID, ts: Date.now() })
-        .then(() => setCloudStatus('ok'))
-        .catch(err => { console.error('cloudPush:', err); cloudDirty = true; setCloudStatus('off'); });
+        .then(() => { setCloudStatus('ok'); window.__cloudFailStreak = 0; })
+        .catch(err => {
+          console.error('cloudPush:', err);
+          cloudDirty = true;
+          setCloudStatus('off');
+          /* Aviso VISIBLE: sin esto, un fallo de subida (reglas de Firestore o
+             documento > 1 MB) pasaba desapercibido y los datos no llegaban
+             a los demás teléfonos mientras el indicador mostraba "En línea". */
+          if ((window.__cloudFailStreak || 0) < 1) {
+            toast('No se pudo subir a la nube. Revisa las reglas de Firestore o tu conexión.', 'bad', 6000);
+          }
+          window.__cloudFailStreak = (window.__cloudFailStreak || 0) + 1;
+        });
     }
 
     function cloudSyncNow() {
@@ -603,21 +625,25 @@
     /* ============================ 4. MODALES ============================ */
     let pendingConfirm = null;
     let modalPrevFocus = null;
+    let modalJustOpened = false; /* evita que el MISMO clic que abre el modal lo cierre */
     const modalOpen = () => $('#modal-root').childElementCount > 0;
 
     function openModal(html, wide = false) {
       const root = $('#modal-root');
       modalPrevFocus = document.activeElement;
-      /* FIX: openModal ya NO borra pendingConfirm. Ese reset destruía el callback
-         que confirmDialog acababa de asignar, por lo que NINGÚN botón de
-         confirmación (Vaciar cesta, Eliminar vendedor, Despachar, Salir…)
-         ejecutaba su acción. closeModal() sigue limpiándolo al cerrar. */
       root.innerHTML = `
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-900/60 backdrop-blur-sm anim-fade" data-close="1">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-900/60 backdrop-blur-sm anim-fade" data-backdrop="1">
       <div class="bg-white rounded-2xl shadow-2xl w-full ${wide ? 'max-w-4xl' : 'max-w-lg'} overflow-hidden border border-steel-200 flex flex-col max-h-[90vh]" data-modal-panel="1" tabindex="-1">
         ${html}
       </div>
     </div>`;
+      /* BUG CORREGIDO: el clic que abre el modal sigue burbujeando hasta el
+         manejador global de document. Antes, ese manejador lo interpretaba
+         como "clic fuera del panel" y CERRABA el modal en el mismo clic:
+         por eso ninguna confirmación (De baja, Eliminar, Vaciar cesta…)
+         llegaba a ejecutarse. modalJustOpened ignora ese primer clic. */
+      modalJustOpened = true;
+      setTimeout(() => { modalJustOpened = false; }, 0);
       document.body.style.overflow = 'hidden';
       requestAnimationFrame(() => {
         const f = root.querySelector('[data-modal-panel="1"]');
@@ -638,8 +664,9 @@
 
     document.addEventListener('click', e => {
       if (!modalOpen() || !(e.target instanceof Element)) return;
-      if (e.target.closest('[data-close]')) { e.preventDefault(); closeModal(); return; }
-      if (!e.target.closest('[data-modal-panel]')) closeModal();
+      if (modalJustOpened) { modalJustOpened = false; return; } /* clic de apertura: ignorar */
+      if (e.target.closest('[data-modal-panel]')) return;        /* dentro del panel: acción normal */
+      if (e.target.closest('[data-backdrop]')) { e.preventDefault(); closeModal(); } /* fondo oscuro */
     });
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && modalOpen()) { e.preventDefault(); closeModal(); }
@@ -929,10 +956,11 @@
       }
     }
 
-    /* FIX: el estado del vendedor es SIEMPRE explícito y controlado, sin inversiones.
+    /* FIX: el estado del vendedor es SIEMPRE explícito, sin inversiones y con
+       RESPUESTA INMEDIATA (petición expresa de Administración).
        setSellerActive(id, true)  → Activa: s.active = true al instante.
-       setSellerActive(id, false) → De baja: SOLO con confirmación (nunca accidental);
-                                    además cierra la jornada abierta del vendedor.
+       setSellerActive(id, false) → De baja: se aplica al instante y cierra la
+                                    jornada abierta del vendedor.
        Nunca elimina al vendedor ni borra datos: únicamente cambia s.active. */
     function setSellerActive(identifier, targetActive) {
       if (!isAdmin()) { toast('Acción exclusiva para Administración.', 'bad'); return; }
@@ -958,14 +986,10 @@
           u.active ? 'ok' : 'warn');
       };
 
-      if (targetActive === false && isSellerActive(s)) {
-        /* APAGADO CONTROLADO: poner De baja pasa siempre por confirmación */
-        confirmDialog('Poner De baja',
-          `¿Poner <b>De baja</b> a <b>${esc(s.name)}</b>? No podrá iniciar sesión hasta que lo reactives. Su cuenta NO se elimina.`,
-          'Poner De baja', apply, true);
-        return;
-      }
-      apply(); /* activación directa: s.active = true al instante */
+      /* RESPUESTA INMEDIATA: tanto activar como poner De baja se aplican al
+         instante, se guardan en localStorage y se suben a Firestore de
+         inmediato (queueCloudSync(0) dentro de apply). */
+      apply();
     }
 
     function activateSeller(identifier) { setSellerActive(identifier, true); }
@@ -1060,18 +1084,29 @@
       }, false);
     }
 
-    /* FIX 2: consulta a la nube con guard de TIEMPO (permite reintento, no bloqueo eterno).
-       applyRemote → renderCurrent → re-renderiza el login cuando lleguen los vendedores. */
-    function loginCloudFetch() {
+    /* FIX 2: consulta a la nube para el login. force=true ignora el guard de
+       tiempo (botón Reintentar / reintento automático). Los fallos YA NO se
+       silencian: se muestran en el indicador de estado del login. */
+    function loginCloudFetch(force = false) {
       const now = Date.now();
-      if (window.__loginCloudAt && (now - window.__loginCloudAt) < 5000) return; /* máx. 1 intento cada 5 s */
+      if (!force && window.__loginCloudAt && (now - window.__loginCloudAt) < 5000) return; /* máx. 1 intento cada 5 s */
       window.__loginCloudAt = now;
-      if (!cloudReady || !navigator.onLine) return;
+      if (!cloudReady || !navigator.onLine) { setCloudStatus(cloudReady ? 'off' : 'cfg'); return; }
       const r = cloudRef(); if (!r) return;
+      setCloudStatus('sync');
       r.get({ source: 'server' }).then(snap => {
+        setCloudStatus('ok');
+        window.__cloudFailStreak = 0;
         if (snap.exists) applyRemote(snap.data());
-      }).catch(err => console.warn('Sync login:', err));
+      }).catch(err => {
+        console.error('Sync login:', err);
+        setCloudStatus('off');
+        toast('No se pudo descargar la lista de vendedores desde la nube. Toca el indicador de estado para reintentar.', 'bad', 6000);
+      });
     }
+
+    /* Reintento automático en pantalla de login mientras no haya vendedores */
+    let loginRetryTimer = null;
 
     function renderLogin() {
       if (typeof loadDB === 'function') loadDB();
@@ -1082,9 +1117,9 @@
       /* 2) Criterio único de "Activo" (true, 1, 'true' o indefinido/null por defecto) */
       const activos = sellers.filter(isSellerActive);
 
-      /* 3) opts: value = s.id, etiqueta = nombre (+zona) */
+      /* 3) opts: value = s.id, etiqueta = nombre (+ zona + ID) para identificación clara */
       const opts = activos.map(s =>
-        `<option value="${esc(s.id)}">${esc(s.name || s.id)}${s.zone ? ' — ' + esc(s.zone) : ''}</option>`
+        `<option value="${esc(s.id)}">${esc(s.name || s.id)}${s.zone ? ' — ' + esc(s.zone) : ''} · ${esc(s.id)}</option>`
       ).join('');
 
       const roleSelect = document.getElementById('login-role');
@@ -1127,7 +1162,11 @@
             <select id="login-name" class="input" ${activos.length ? '' : 'disabled'}>
               ${activos.length ? opts : '<option value="">Sin vendedores registrados</option>'}
             </select>
-            <p id="seller-hint" class="text-[10px] text-steel-400 mt-1.5">¿Sin cuenta o sin clave? Solicítala a Administración (Jornada → Gestión de vendedores).</p>
+            ${activos.length
+              ? '<p id="seller-hint" class="text-[10px] text-steel-400 mt-1.5">¿Sin cuenta o sin clave? Solicítala a Administración (Jornada → Gestión de vendedores).</p>'
+              : `<p id="seller-hint" class="text-[10px] mt-1.5 font-semibold ${cloudStatus === 'ok' ? 'text-amber-600' : 'text-red-500'}">${cloudStatus === 'ok'
+                ? 'No hay vendedores activos en la nube. Regístralos o actívalos desde Administración (Jornada).'
+                : 'No se pudo descargar la lista desde la nube. Toca el indicador de estado (abajo) para reintentar.'}</p>`}
           </div>
 
           <div>
@@ -1144,19 +1183,28 @@
         </div>
 
         <div class="flex items-center justify-between text-[11px] text-steel-400 border-t border-steel-100 pt-4">
-          <span class="font-mono">${esc(rifText)}</span>
-          <span class="flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full ${online ? 'bg-emerald-500' : 'bg-red-500'}"></span>
-            ${online ? 'En línea' : 'Sin conexión'}
-          </span>
+          <span class="font-mono">${esc(rifText)} · ${APP_VERSION}</span>
+          <button type="button" onclick="loginCloudFetch(true)" title="Estado real de la sincronización con Firebase — toca para reintentar"
+                  class="flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold ${cloudStatus === 'ok' ? 'bg-emerald-100 text-emerald-700' : cloudStatus === 'sync' ? 'bg-blue-100 text-blue-700' : cloudStatus === 'cfg' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}">
+            <span class="w-2 h-2 rounded-full ${online ? (cloudStatus === 'ok' ? 'bg-emerald-500 xlive-dot' : cloudStatus === 'sync' ? 'bg-amber-400 xlive-dot' : 'bg-red-500') : 'bg-red-500'}"></span>
+            ${online ? (cloudStatus === 'ok' ? 'Nube conectada' : cloudStatus === 'sync' ? 'Sincronizando…' : cloudStatus === 'cfg' ? 'Firebase sin configurar' : 'Nube sin respuesta · Reintentar') : 'Sin conexión'}
+          </button>
         </div>
       </div>
     </div>
   </div>`;
 
-      /* 4) FIX 2: si local no tiene activos, consulta el servidor (con reintento por tiempo).
-            applyRemote dispara renderCurrent → re-pinta el login con las opciones. */
-      if (!activos.length) loginCloudFetch();
+      /* 4) FIX 2: si local no tiene activos, consulta el servidor y reintenta
+            SOLO cada 8 s mientras el login esté vacío (red móvil lenta, primer
+            arranque). applyRemote dispara renderCurrent → re-pinta el login. */
+      if (loginRetryTimer) { clearInterval(loginRetryTimer); loginRetryTimer = null; }
+      if (!activos.length) {
+        loginCloudFetch();
+        loginRetryTimer = setInterval(() => {
+          if (!session && !activeSellers().length) loginCloudFetch(true);
+          else { clearInterval(loginRetryTimer); loginRetryTimer = null; }
+        }, 8000);
+      }
     }
 
     /* ============================ 10. SHELL / NAVEGACIÓN ============================ */
@@ -1865,7 +1913,7 @@
     </div>
     <div class="flex items-center gap-1 shrink-0">
       <button onclick="editSeller('${esc(s.id)}')" class="btn-line w-8 h-8 rounded-lg" title="Editar" aria-label="Editar ${esc(s.name)}"><i class="fa-solid fa-pen text-[10px]"></i></button>
-      <button onclick="setSellerActive('${esc(s.id)}', ${on ? 'false' : 'true'})" class="btn-line w-8 h-8 rounded-lg" title="${on ? 'Poner De baja (pedirá confirmación)' : 'Activar cuenta'}" aria-label="${on ? 'Poner De baja' : 'Activar'} ${esc(s.name)}"><i class="fa-solid ${on ? 'fa-user-slash' : 'fa-user-check'} text-[10px]"></i></button>
+      <button onclick="setSellerActive('${esc(s.id)}', ${on ? 'false' : 'true'})" class="btn-line w-8 h-8 rounded-lg" title="${on ? 'Poner De baja (inmediato)' : 'Activar cuenta'}" aria-label="${on ? 'Poner De baja' : 'Activar'} ${esc(s.name)}"><i class="fa-solid ${on ? 'fa-user-slash' : 'fa-user-check'} text-[10px]"></i></button>
       <button onclick="deleteSeller('${esc(s.id)}')" class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Eliminar definitivamente de la base de datos" aria-label="Eliminar ${esc(s.name)}">
         <i class="fa-solid fa-trash text-[10px]"></i>
       </button>
@@ -1892,7 +1940,7 @@
       ${on ? `
       <button type="button" onclick="setSellerActive('${esc(u.id)}', false)"
               class="btn-ok text-xs py-1 px-3 rounded-lg shrink-0"
-              title="Cuenta Activa — clic para poner De baja (se pedirá confirmación; nunca es accidental ni borra la cuenta)">
+              title="Cuenta Activa — clic para poner De baja (inmediato, se sincroniza al instante)">
         <i class="fa-solid fa-user-check"></i> Activo
       </button>` : `
       <button type="button" onclick="setSellerActive('${esc(u.id)}', true)"
@@ -2178,17 +2226,14 @@
       return removed;
     }
 
-    /* Cestica de la TARJETA de jornada */
+    /* Cestica de la TARJETA de jornada — ELIMINACIÓN INMEDIATA (petición expresa):
+       responde al instante, borra en local + Firestore y refresca la vista. */
     function deleteCrewCard(id) {
       if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
       const s = sellerById(id);
       const name = s ? s.name : id;
-      const nToday = (db.orders || []).filter(o => o.sellerId === id && o.ts >= t0()).length;
-      const msg = `Se eliminará a <b>${esc(name)}</b> y se limpiarán de la nube su jornada y asistencia${nToday ? `, junto con <b>${nToday}</b> pedido(s) creados hoy` : ''}. Los pedidos de días anteriores se conservan en el historial. Esta acción no se puede deshacer.`;
-      confirmDialog('Eliminar vendedor y su jornada de hoy', msg, 'Eliminar todo', () => {
-        const removed = purgeSellerById(id);
-        toast(`<b>${esc(name)}</b> eliminado${removed ? ` · ${removed} pedido(s) de hoy borrados` : ''}. Tarjeta de jornada actualizada.`, 'warn');
-      }, true);
+      const removed = purgeSellerById(id);
+      toast(`<b>${esc(name)}</b> eliminado del sistema${removed ? ` · ${removed} pedido(s) de hoy borrados` : ''}. Sincronizado con la nube.`, 'warn', 4500);
     }
 
     /* Cestica de la LISTA de Gestión de Vendedores (mismo mecanismo, por ID seguro) */
