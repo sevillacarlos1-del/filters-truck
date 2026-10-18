@@ -410,8 +410,8 @@
       const root = $('#toast-root'); if (!root) return;
       const el = document.createElement('div');
       el.className = `max-w-sm w-full bg-white border-l-4 rounded-xl shadow-lg p-3 text-xs font-medium pointer-events-auto transition-all duration-300 translate-y-2 opacity-0 ${type === 'ok' ? 'border-emerald-500 text-navy-900' :
-          type === 'warn' ? 'border-amber-500 text-navy-900' :
-            type === 'bad' ? 'border-red-500 text-navy-900' : 'border-navy-900 text-navy-900'
+        type === 'warn' ? 'border-amber-500 text-navy-900' :
+          type === 'bad' ? 'border-red-500 text-navy-900' : 'border-navy-900 text-navy-900'
         }`;
       el.innerHTML = msg;
       root.appendChild(el);
@@ -440,7 +440,7 @@
     let cloudTimer = null;
     let lastCloudRev = 0;
     let applyingRemote = false;
-    let cloudStatus = 'off';
+    let cloudStatus = 'off'; /* off | ok | sync | cfg */
 
     function setCloudStatus(s) { cloudStatus = s; updateConnChip(); }
 
@@ -485,7 +485,7 @@
     }
 
     function mergeRemote(remote, local) {
-      const m = JSON.parse(JSON.stringify(local));
+      const m = JSON.parse(JSON.stringify(local || seedDB()));
       m.products = Array.isArray(remote.products) ? remote.products : m.products;
       m.sellers = Array.isArray(remote.sellers) ? remote.sellers : m.sellers;
       m.counter = Math.max(m.counter || 1, remote.counter || 1);
@@ -570,23 +570,23 @@
       } catch (e) { }
     }
 
+    /* Restaura los campos del login tras un re-render (para no perder lo tecleado) */
+    function restoreLoginFields() {
+      const curPass = $('#login-pass')?.value;
+      const curRole = $('#login-role')?.value;
+      renderLogin();
+      if ($('#login-role') && curRole) { $('#login-role').value = curRole; onLoginRoleChange(); }
+      if ($('#login-pass') && curPass) $('#login-pass').value = curPass;
+    }
+
     try {
       if (window.BroadcastChannel) {
         const listenerBc = new BroadcastChannel('tf_sync_channel');
         listenerBc.onmessage = (e) => {
           if (e.data && e.data.type === 'db_updated') {
             loadDB();
-            if (!session) {
-              const curPass = $('#login-pass')?.value;
-              const curName = $('#login-name')?.value;
-              const curRole = $('#login-role')?.value;
-              renderLogin();
-              if ($('#login-role') && curRole) { $('#login-role').value = curRole; onLoginRoleChange(); }
-              if ($('#login-pass') && curPass) $('#login-pass').value = curPass;
-              if ($('#login-name') && curName) $('#login-name').value = curName;
-            } else {
-              renderCurrent();
-            }
+            if (!session) restoreLoginFields();
+            else renderCurrent();
           }
         };
       }
@@ -595,17 +595,8 @@
     window.addEventListener('storage', (e) => {
       if (e.key === DB_KEY) {
         loadDB();
-        if (!session) {
-          const curPass = $('#login-pass')?.value;
-          const curName = $('#login-name')?.value;
-          const curRole = $('#login-role')?.value;
-          renderLogin();
-          if ($('#login-role') && curRole) { $('#login-role').value = curRole; onLoginRoleChange(); }
-          if ($('#login-pass') && curPass) $('#login-pass').value = curPass;
-          if ($('#login-name') && curName) $('#login-name').value = curName;
-        } else {
-          renderCurrent();
-        }
+        if (!session) restoreLoginFields();
+        else renderCurrent();
       }
     });
 
@@ -732,8 +723,7 @@
       if (!Array.isArray(db.sellers)) {
         db.sellers = [];
       } else {
-        /* FIX: antes era { active: calc, ...s } → el spread sobrescribía el cálculo.
-           Ahora el valor normalizado SIEMPRE gana: false/'false'/0 → inactivo; ausente/null → activo. */
+        /* Normalización: el valor calculado SIEMPRE gana (false/'false'/0 → inactivo; ausente/null → activo). */
         db.sellers = db.sellers.map(s => ({
           ...s,
           active: (s.active !== false && s.active !== 'false' && s.active !== 0)
@@ -760,6 +750,7 @@
     }
 
     function saveDB() {
+      if (!db) return;
       localStorage.setItem(DB_KEY, JSON.stringify(db));
       broadcastDBChange();
       if (!applyingRemote) queueCloudSync();
@@ -767,13 +758,15 @@
 
     loadDB();
 
-    const prod = code => (db && db.products ? db.products : PRODUCTS).find(p => p.code === code);
+    const prod = code => (db && Array.isArray(db.products) ? db.products : PRODUCTS).find(p => p.code === code);
+
+    /* ---- Lista dinámica de vendedores (fuente única de verdad) ---- */
     function getSellers() {
-      return (db && db.sellers) ? db.sellers : [];
+      return (db && Array.isArray(db.sellers)) ? db.sellers : [];
     }
 
-    /* ---- Fuente única de verdad: un solo criterio de "Activo" para... */
-    const isSellerActive = s => !!s && s.active !== false && s.active !== 'false';
+    /* Criterio ÚNICO de "Activo" para panel, login y sesión */
+    const isSellerActive = s => !!s && s.active !== false && s.active !== 'false' && s.active !== 0;
     const activeSellers = () => getSellers().filter(isSellerActive);
     const sellerById = id => getSellers().find(s => s.id === id || s.name === id);
 
@@ -788,7 +781,6 @@
       db.activity.unshift({ ts: Date.now(), ic, t });
       db.activity = db.activity.slice(0, 30);
     }
-
 
     /* ============================ 7. ESTADO GLOBAL ============================ */
     let session = null;
@@ -846,6 +838,7 @@
     /* ============================ 9. AUTENTICACIÓN ============================ */
     function isAdmin() { return !!(session && session.role === 'admin'); }
 
+    /* ÚNICA declaración de validateSession (antes estaba duplicada) */
     function validateSession() {
       if (!session) return false;
       if (session.role === 'seller') {
@@ -883,6 +876,7 @@
         toast(`Jornada de <b>${esc(s.name)}</b> iniciada.`, 'ok');
       }
       saveDB();
+      queueCloudSync(0);
       if (typeof renderCrew === 'function') renderCrew();
     }
 
@@ -902,12 +896,11 @@
       logActivity(nowActive ? 'fa-user-check' : 'fa-user-slash',
         `${nowActive ? 'Vendedor reactivado' : 'Vendedor desactivado'}: ${s.name}`);
       saveDB();
-  queueCloudSync(0); // <--- ¡Esta es la que falta por agregar!
-  if (typeof renderCrew === 'function') renderCrew();
-  toast(`Vendedor <b>${esc(s.name)}</b> ahora está <b>${nowActive ? 'Activo' : 'Inactivo'}</b>`, 'ok');
+      queueCloudSync(0);
+      if (typeof renderCrew === 'function') renderCrew();
+      toast(`Vendedor <b>${esc(s.name)}</b> ahora está <b>${nowActive ? 'Activo' : 'Inactivo'}</b>.`, nowActive ? 'ok' : 'warn');
     }
 
-    /* REQUISITO: Validación en doLogin() que reconoce al vendedor activo de inmediato y permite ingreso por PIN */
     function doLogin() {
       loadDB(); /* estado local como base; abajo se refresca contra el servidor si hay nube */
       const role = $('#login-role')?.value || 'seller';
@@ -943,52 +936,45 @@
         toast(`¡Bienvenido, <b>${esc(session.name)}</b>!`, 'ok');
       };
 
-      /* FIX clave: el PIN se valida contra el ESTADO DEL SERVIDOR, no contra la copia local vieja */
+      /* El PIN se valida contra el ESTADO DEL SERVIDOR, no contra la copia local vieja */
       if (cloudReady && navigator.onLine) {
         setCloudStatus('sync');
-        cloudRef().get({ source: 'server' })
+        const r = cloudRef();
+        if (!r) { finish(); return; }
+        r.get({ source: 'server' })
           .then(snap => {
-            if (snap.exists) applyRemote(snap.data()); /* aplica y persiste el estado más reciente */
+            if (snap.exists) applyRemote(snap.data());
             setCloudStatus('ok');
           })
           .catch(err => { console.warn('doLogin refresh:', err); setCloudStatus('off'); })
-          .finally(finish); /* cred y nameSel ya están capturados: aunque renderLogin repinte, no se pierden */
+          .finally(finish);
       } else {
         finish();
       }
     }
-    function validateSession() {
-      if (!session) return false;
-      if (session.role === 'seller') {
-        const u = sellerById(session.id);
-        if (!isSellerActive(u)) {
-          sessionStorage.removeItem(SESS_KEY);
-          session = null; cart = [];
-          toast('Tu cuenta de vendedor fue eliminada o desactivada por Administración.', 'warn', 4500);
-          return false;
-        }
-        session.name = u.name;
-        sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
-        return true;
+
+    /* Conmutador de rol SIN re-render completo: muestra/oculta #seller-pick,
+       cambia etiquetas y limpia el campo de clave. Cero duplicaciones. */
+    function onLoginRoleChange() {
+      const roleSelect = document.getElementById('login-role');
+      if (!roleSelect) return;
+      const role = roleSelect.value;
+      sessionStorage.setItem('preferred_login_role', role);
+
+      const pick = document.getElementById('seller-pick');
+      if (pick) pick.style.display = (role === 'seller') ? 'block' : 'none';
+
+      const lbl = document.getElementById('pass-lbl');
+      const inp = document.getElementById('login-pass');
+      if (lbl) lbl.textContent = (role === 'seller') ? 'Clave de acceso (PIN) *' : 'Contraseña de Administración *';
+      if (inp) {
+        inp.maxLength = (role === 'seller') ? 4 : 24;
+        inp.inputMode = (role === 'seller') ? 'numeric' : 'text';
+        inp.placeholder = (role === 'seller') ? '••••' : '••••••••••';
+        inp.value = ''; /* limpia el campo al conmutar de rol */
       }
-      if (session.role === 'admin') return true;
-      sessionStorage.removeItem(SESS_KEY); session = null;
-      return false;
     }
-function onLoginRoleChange() {
-  const roleSelect = document.getElementById('login-role');
-  if (!roleSelect) return;
-  
-  const role = roleSelect.value;
-  sessionStorage.setItem('preferred_login_role', role);
-  
-  const loginPass = document.getElementById('login-pass');
-  if (loginPass) loginPass.value = '';
-  
-  if (typeof renderLogin === 'function') {
-    renderLogin();
-  }
-}
+
     function logout() {
       confirmDialog('Cerrar sesión', '¿Salir del sistema? Los datos locales se conservan en este dispositivo.', 'Salir', () => {
         sessionStorage.removeItem(SESS_KEY);
@@ -998,28 +984,35 @@ function onLoginRoleChange() {
       }, false);
     }
 
-function renderLogin() {
-  const roleSelect = document.getElementById('login-role');
-  const currentRole = roleSelect ? roleSelect.value : (sessionStorage.getItem('preferred_login_role') || 'admin');
+    function renderLogin() {
+      if (typeof loadDB === 'function') loadDB();
 
-  if (typeof loadDB === 'function') loadDB();
-  
-  // Declarar sellers y activos de forma segura desde la base de datos
-  const sellers = (db && Array.isArray(db.sellers)) ? db.sellers : [];
-  const isOn = s => !!s && s.active !== false;
-  const activos = sellers.filter(isOn);
-  const opts = activos.length ? activos.map(s => `<option value="${s.id}">${s.name || s.id}${s.zone ? ' - ' + s.zone : ''}</option>`).join('') : '';
+      /* 1) Lectura directa y segura de db.sellers (respaldo: arreglo vacío) */
+      const sellers = (db && Array.isArray(db.sellers)) ? db.sellers : [];
 
-  const online = navigator.onLine;
-  const rifText = (typeof EMPRESA !== 'undefined' && EMPRESA && EMPRESA.rif) ? EMPRESA.rif : '';
-  const logoHtml = (typeof logoSVG === 'function') ? logoSVG(48) : '';
+      /* 2) Criterio único de "Activo" (true, 1, 'true' o indefinido/null por defecto) */
+      const activos = sellers.filter(isSellerActive);
 
-  const appEl = document.getElementById('app');
-  if (!appEl) return;
+      /* 3) opts: value = s.id, etiqueta = nombre (+zona) */
+      const opts = activos.map(s =>
+        `<option value="${esc(s.id)}">${esc(s.name || s.id)}${s.zone ? ' — ' + esc(s.zone) : ''}</option>`
+      ).join('');
 
-  appEl.innerHTML = `
+      const roleSelect = document.getElementById('login-role');
+      const currentRole = roleSelect ? roleSelect.value
+        : (sessionStorage.getItem('preferred_login_role') || 'seller');
+
+      const online = navigator.onLine;
+      const rifText = (typeof EMPRESA !== 'undefined' && EMPRESA && EMPRESA.rif) ? EMPRESA.rif : '';
+      const logoHtml = (typeof logoSVG === 'function') ? logoSVG(48) : '';
+      const isSeller = currentRole === 'seller';
+
+      const appEl = document.getElementById('app');
+      if (!appEl) return;
+
+      appEl.innerHTML = `
   <div class="min-h-screen blueprint flex flex-col items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-lg border border-steel-200 overflow-hidden">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-lg border border-steel-200 overflow-hidden anim-up">
       <div class="hazard h-2"></div>
       <div class="p-6 sm:p-8 space-y-6">
         <div class="text-center space-y-2">
@@ -1032,36 +1025,37 @@ function renderLogin() {
           <div>
             <label class="lbl">Rol de acceso</label>
             <select id="login-role" class="input" onchange="onLoginRoleChange()">
-              <option value="seller" ${currentRole === 'seller' ? 'selected' : ''}>Vendedor / Comercial (móvil)</option>
-              <option value="admin" ${currentRole === 'admin' ? 'selected' : ''}>Administración / Oficina</option>
+              <option value="seller" ${isSeller ? 'selected' : ''}>Vendedor / Comercial (móvil)</option>
+              <option value="admin" ${!isSeller ? 'selected' : ''}>Administración / Oficina</option>
             </select>
           </div>
 
-          <div id="seller-pick" style="display: ${currentRole === 'seller' ? 'block' : 'none'};">
+          <div id="seller-pick" style="display: ${isSeller ? 'block' : 'none'};">
             <div class="flex items-center justify-between mb-1">
-              <label class="lbl mb-0" for="login-name">VENDEDOR</label>
+              <label class="lbl mb-0" for="login-name">Vendedor</label>
               <span class="text-[10px] text-steel-500 font-semibold">${activos.length} activo(s) de ${sellers.length}</span>
             </div>
-            <select id="login-name" class="input">
+            <select id="login-name" class="input" ${activos.length ? '' : 'disabled'}>
               ${activos.length ? opts : '<option value="">Sin vendedores registrados</option>'}
             </select>
-            <p id="seller-hint" class="text-[10px] text-steel-400 mt-1.5">¿Sin cuenta o sin clave? Solicítala a Administración.</p>
+            <p id="seller-hint" class="text-[10px] text-steel-400 mt-1.5">¿Sin cuenta o sin clave? Solicítala a Administración (Jornada → Gestión de vendedores).</p>
           </div>
 
           <div>
-            <label class="lbl" id="pass-lbl" for="login-pass">
-              ${currentRole === 'seller' ? 'Clave de acceso (PIN)' : 'Contraseña de Administración'}
-            </label>
-            <input type="password" id="login-pass" class="input font-mono tracking-widest" placeholder="••••" />
+            <label class="lbl" id="pass-lbl" for="login-pass">${isSeller ? 'Clave de acceso (PIN) *' : 'Contraseña de Administración *'}</label>
+            <input type="password" id="login-pass" class="input font-mono tracking-widest text-lg text-center"
+                   inputmode="${isSeller ? 'numeric' : 'text'}" maxlength="${isSeller ? 4 : 24}"
+                   placeholder="${isSeller ? '••••' : '••••••••••'}" autocomplete="current-password"
+                   onkeydown="if(event.key==='Enter')doLogin()">
           </div>
 
-          <button onclick="doLogin()" class="btn-navy w-full py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2">
+          <button onclick="doLogin()" class="btn-navy w-full py-3 rounded-xl font-bold text-sm" ${isSeller && !activos.length ? 'disabled' : ''}>
             <i class="fa-solid fa-right-to-bracket"></i> Ingresar al sistema
           </button>
         </div>
 
         <div class="flex items-center justify-between text-[11px] text-steel-400 border-t border-steel-100 pt-4">
-          <span class="font-mono">${rifText}</span>
+          <span class="font-mono">${esc(rifText)}</span>
           <span class="flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full ${online ? 'bg-emerald-500' : 'bg-red-500'}"></span>
             ${online ? 'En línea' : 'Sin conexión'}
@@ -1070,7 +1064,26 @@ function renderLogin() {
       </div>
     </div>
   </div>`;
-}
+
+      /* 4) Respaldo en caliente: si local no tiene activos, consulta Firestore UNA sola vez.
+            El guard evita bucles infinitos de re-render. */
+      if (!activos.length && !window.__loginCloudTried && cloudReady && navigator.onLine) {
+        window.__loginCloudTried = true;
+        const r = cloudRef();
+        if (r) {
+          r.get({ source: 'server' }).then(snap => {
+            if (snap.exists) {
+              applyRemote(snap.data());
+              const now = (db && Array.isArray(db.sellers)) ? db.sellers.filter(isSellerActive) : [];
+              if (now.length && !session) renderLogin();
+            }
+          }).catch(err => console.warn('Sync login:', err));
+        }
+      } else if (activos.length) {
+        window.__loginCloudTried = false;
+      }
+    }
+
     /* ============================ 10. SHELL / NAVEGACIÓN ============================ */
     const NAV = {
       seller: [
@@ -1082,7 +1095,7 @@ function renderLogin() {
       admin: [
         { id: 'catalog', icon: 'fa-boxes-stacked', label: 'Catálogo' },
         { id: 'dash', icon: 'fa-gauge-high', label: 'Panel' },
-        { id: 'orders', icon: 'fa-file-invoice', label: 'Pedidos', badge: () => db.orders.filter(o => o.status === 'pendiente').length },
+        { id: 'orders', icon: 'fa-file-invoice', label: 'Pedidos', badge: () => (db && Array.isArray(db.orders)) ? db.orders.filter(o => o.status === 'pendiente').length : 0 },
         { id: 'crew', icon: 'fa-route', label: 'Jornada' },
         { id: 'inventory', icon: 'fa-warehouse', label: 'Inventario' },
         { id: 'backup', icon: 'fa-database', label: 'Respaldo' }
@@ -1166,7 +1179,7 @@ function renderLogin() {
     function go(v) {
       if (!session) { renderLogin(); return; }
       const ids = navIdsFor();
-      ui.view = ids.includes(v) ? v : defaultView();
+      ui.view = ids.includes(v) ? v : defaultView(); /* un vendedor jamás navega a vistas admin */
       closeModal(); renderView(); setNav(); setTitle();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1208,7 +1221,7 @@ function renderLogin() {
     /* ============================ 11. VISTAS — COMERCIAL ============================ */
     function productCards() {
       const q = (ui.catQ || '').toLowerCase().trim();
-      const list = (db.products || PRODUCTS)
+      const list = (db && Array.isArray(db.products) ? db.products : PRODUCTS)
         .filter(p => ui.catType === 'todos' || p.type === ui.catType)
         .filter(p => !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || (p.app || []).some(a => a.toLowerCase().includes(q)));
       if (!list.length) {
@@ -1264,7 +1277,8 @@ function renderLogin() {
   </div>`;
     }
 
-    /* ============================ CATÁLOGO VISUAL ============================ */
+    /* ============================ CATÁLOGO VISUAL (con fotos) ============================ */
+    /* La REJILLA es de consulta para todos; el PANEL de gestión es EXCLUSIVO de Administración. */
     function viewFiltersCatalog() {
       return `
   <section id="sev-section" class="space-y-4">
@@ -1291,6 +1305,8 @@ function renderLogin() {
   </section>`;
     }
 
+    /* EXCLUSIVO Administración / Oficina. En el perfil Vendedor este bloque
+       NUNCA se renderiza (ni formulario, ni subida de fotos, ni borrado). */
     function viewFiltersAdminPanel() {
       return `
   <details id="filterFormDetails" class="card group">
@@ -1409,11 +1425,11 @@ function renderLogin() {
       if (!q) {
         return `<div class="bg-white border border-steel-200 rounded-xl p-4 text-xs text-steel-500 flex items-start gap-2">
       <i class="fa-solid fa-circle-info text-navy-700 mt-0.5"></i>
-      <span>Escribe una referencia del mercado (Fleetguard, Wix, Napa, Donaldson, Baldwin…) para hallar el equivalente Truck Filters.</span>
+      <span>Escribe una referencia del mercado (Fleetguard, Wix, Donaldson, Baldwin…) para hallar el equivalente Truck Filters.</span>
     </div>`;
       }
       const rows = [];
-      (db.products || PRODUCTS).forEach(p => (p.cross || []).forEach(([brand, ref]) => {
+      (db && Array.isArray(db.products) ? db.products : PRODUCTS).forEach(p => (p.cross || []).forEach(([brand, ref]) => {
         if (ref.toLowerCase().includes(q) || brand.toLowerCase().includes(q)) rows.push({ brand, ref, p });
       }));
       if (!rows.length) {
@@ -1445,7 +1461,7 @@ function renderLogin() {
       <div class="space-y-4">
         <div class="relative">
           <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-steel-400 text-sm"></i>
-          <input value="${esc(ui.toolQ)}" oninput="ui.toolQ=this.value;renderRefResults()" class="input pl-9" placeholder="Ej. LF16035, 57374, Fleetguard...">
+          <input value="${esc(ui.toolQ)}" oninput="ui.toolQ=this.value;renderRefResults()" class="input pl-9" placeholder="Ej. LF9009, P55102, Fleetguard...">
         </div>
         <div id="ref-results" class="space-y-2">${refRows()}</div>
       </div>` : toolPlan()}
@@ -1524,16 +1540,17 @@ function renderLogin() {
     }
 
     function viewHistory() {
-      const mine = db.orders.filter(o => o.sellerId === session.id);
+      const mine = (db.orders || []).filter(o => o.sellerId === session.id);
       const total = mine.reduce((a, o) => a + o.total, 0);
       const pend = mine.filter(o => o.status === 'pendiente').length;
+      const zone = (sellerById(session.id) || {}).zone || 'Zona comercial';
       const statBox = (l, v) => `<div class="bg-white border border-steel-200 rounded-xl shadow-sm p-3 text-center">
     <div class="kicker">${l}</div><div class="text-lg font-bold font-disp text-navy-900 mt-0.5">${v}</div>
   </div>`;
       return `
   <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
     <div>
-      <div class="kicker mb-1">${esc(session.name)} · ${esc((sellerById(session.id) || {}).zone || 'Zona comercial')}</div>
+      <div class="kicker mb-1">${esc(session.name)} · ${esc(zone)}</div>
       <h2 class="text-xl font-bold text-navy-900 font-disp">Historial de pedidos</h2>
     </div>
     <div class="grid grid-cols-3 gap-3">
@@ -1554,7 +1571,7 @@ function renderLogin() {
           </div>
           <div class="text-lg font-bold font-disp text-navy-900">${money(o.total)}</div>
         </div>`).join('')
-          : `<div class="card text-sm text-steel-500 text-center py-8">Aún no has enviado pedidos. Ve al <b>Catálogo</b> y arma el primero.</div>`}
+      : `<div class="card text-sm text-steel-500 text-center py-8">Aún no has enviado pedidos. Ve al <b>Catálogo</b> y arma el primero.</div>`}
     </div>
   </div>`;
     }
@@ -1570,10 +1587,11 @@ function renderLogin() {
   </div>`;
 
     function viewDash() {
-      const pend = db.orders.filter(o => o.status === 'pendiente');
-      const today = db.orders.filter(o => o.ts >= t0());
+      const orders = db.orders || [];
+      const pend = orders.filter(o => o.status === 'pendiente');
+      const today = orders.filter(o => o.ts >= t0());
       const salesToday = today.reduce((a, o) => a + o.total, 0);
-      const lowStock = (db.products || PRODUCTS).filter(p => p.stock < 20);
+      const lowStock = (Array.isArray(db.products) ? db.products : PRODUCTS).filter(p => p.stock < 20);
       return `
   <div class="p-4 pb-24 max-w-7xl mx-auto space-y-5 anim-up">
     <div class="flex items-end justify-between flex-wrap gap-3">
@@ -1587,8 +1605,8 @@ function renderLogin() {
     </div>
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       ${kpiCard('fa-hourglass-half', 'Pedidos pendientes', pend.length, 'bg-acc text-navy-950')}
-      ${kpiCard('fa-circle-check', 'Aprobados', db.orders.filter(o => o.status === 'aprobado').length, 'bg-blue-600 text-white')}
-      ${kpiCard('fa-truck-fast', 'Despachados', db.orders.filter(o => o.status === 'despachado').length, 'bg-emerald-600 text-white')}
+      ${kpiCard('fa-circle-check', 'Aprobados', orders.filter(o => o.status === 'aprobado').length, 'bg-blue-600 text-white')}
+      ${kpiCard('fa-truck-fast', 'Despachados', orders.filter(o => o.status === 'despachado').length, 'bg-emerald-600 text-white')}
       ${kpiCard('fa-sack-dollar', 'Ventas de hoy', money(salesToday), 'bg-navy-900 text-white')}
     </div>
     <div class="grid lg:grid-cols-2 gap-4">
@@ -1612,7 +1630,7 @@ function renderLogin() {
               <span class="flex-1 text-xs text-navy-900 truncate">${esc(p.name)}</span>
               <span class="tag border ${p.stock <= 0 ? 'bg-red-50 text-red-700 border-red-300' : 'bg-amber-50 text-amber-800 border-amber-300'}">${p.stock} u</span>
             </div>`).join('')
-          : `<div class="flex items-center gap-2 text-xs text-emerald-600 py-2"><i class="fa-solid fa-circle-check"></i> Todo el inventario en niveles óptimos.</div>`}
+      : `<div class="flex items-center gap-2 text-xs text-emerald-600 py-2"><i class="fa-solid fa-circle-check"></i> Todo el inventario en niveles óptimos.</div>`}
         </div>
       </div>
     </div>
@@ -1621,7 +1639,7 @@ function renderLogin() {
 
     function orderCards() {
       const q = (ui.admin.q || '').toLowerCase().trim();
-      const list = db.orders
+      const list = (db.orders || [])
         .filter(o => ui.admin.st === 'todos' || o.status === ui.admin.st)
         .filter(o => !q || o.number.toLowerCase().includes(q) || ((o.client || {}).name || '').toLowerCase().includes(q) || (o.sellerName || '').toLowerCase().includes(q));
       if (!list.length) {
@@ -1659,8 +1677,8 @@ function renderLogin() {
     function renderOrderList() { const el = document.getElementById('orders-list'); if (el) el.innerHTML = orderCards(); }
 
     function viewOrders() {
-      const stCounts = { todos: db.orders.length };
-      Object.keys(ST).forEach(k => stCounts[k] = db.orders.filter(o => o.status === k).length);
+      const stCounts = { todos: (db.orders || []).length };
+      Object.keys(ST).forEach(k => stCounts[k] = (db.orders || []).filter(o => o.status === k).length);
       const chips = [['todos', 'Todos'], ...Object.entries(ST).map(([k, v]) => [k, v.l])];
       return `
   <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
@@ -1694,8 +1712,8 @@ function renderLogin() {
 
     function crewBodyHTML() {
       const sellers = getSellers();
-      const active = activeSellers();
-      const today = db.orders.filter(o => o.ts >= t0());
+      const active = sellers.filter(isSellerActive);
+      const today = (db.orders || []).filter(o => o.ts >= t0());
       return `
   <details id="sellerMgmt" class="card group mb-5" open>
     <summary class="flex items-center justify-between cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
@@ -1739,17 +1757,17 @@ function renderLogin() {
 
     <div class="space-y-0.5">
       ${sellers.length ? sellers.map((s, i) => sellerRowHTML(s, i)).join('')
-          : `<div class="text-sm text-steel-500 text-center py-6">No hay vendedores registrados. Agrega el primero con el formulario superior.</div>`}
+      : `<div class="text-sm text-steel-500 text-center py-6">No hay vendedores registrados. Agrega el primero con el formulario superior.</div>`}
     </div>
   </details>
 
   <div class="grid md:grid-cols-2 gap-4">
     ${active.length ? active.map(u => crewCardHTML(u, today)).join('')
-          : `<div class="card md:col-span-2 text-sm text-steel-500 text-center py-8">No hay vendedores activos. Reactiva o registra uno desde la gestión superior.</div>`}
+      : `<div class="card md:col-span-2 text-sm text-steel-500 text-center py-8">No hay vendedores activos. Reactiva o registra uno desde la gestión superior.</div>`}
   </div>`;
     }
 
-    /* ============ LISTA DE VENDEDORES — FILAS DEL PANEL ADMIN ============ */
+    /* Fila de la LISTA: papelera SIEMPRE visible junto a cada vendedor */
     function sellerRowHTML(s, i) {
       const on = isSellerActive(s);
       return `
@@ -1758,71 +1776,27 @@ function renderLogin() {
     <div class="flex-1 min-w-0">
       <div class="text-sm font-semibold text-navy-900 truncate flex items-center gap-2">
         ${esc(s.name)}
-        <button type="button" onclick="toggleJornada('${esc(s.id)}')" class="tag border cursor-pointer transition-all font-semibold px-2 py-0.5 rounded text-xs ${on ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100' : 'bg-steel-100 text-steel-500 border-steel-200 hover:bg-steel-200'}" title="Toca para cambiar estado">
-          <i class="fa-solid ${on ? 'fa-circle-check text-emerald-600' : 'fa-circle-pause text-steel-400'}"></i>
-          ${on ? 'Activo' : 'De baja'}
-        </button>
+        <span class="tag border ${on ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-steel-100 text-steel-500 border-steel-200'}">${on ? 'Activo' : 'De baja'}</span>
       </div>
-      <div class="text-[11px] text-steel-500 truncate"><span class="font-mono">${esc(s.id)}</span> · ${esc(s.zone)} · PIN <span class="font-mono font-bold text-navy-800">${esc(s.pin)}</span></div>
+      <div class="text-[11px] text-steel-500 truncate"><span class="font-mono">${esc(s.id)}</span> · ${esc(s.zone)} · PIN <span class="font-mono">${esc(s.pin)}</span></div>
     </div>
-    <div class="flex items-center gap-1.5 shrink-0">
-      <button onclick="toggleJornada('${esc(s.id)}')" class="btn-line px-2.5 py-1 text-xs rounded-lg flex items-center gap-1" title="${on ? 'Desactivar cuenta' : 'Activar cuenta'}" aria-label="Alternar estado de ${esc(s.name)}">
-        <i class="fa-solid ${on ? 'fa-user-slash text-amber-600' : 'fa-user-check text-emerald-600'} text-xs"></i>
-        <span class="hidden sm:inline font-semibold">${on ? 'Desactivar' : 'Activar'}</span>
-      </button>
-      <button onclick="editSeller(${i})" class="btn-line w-8 h-8 rounded-lg" title="Editar" aria-label="Editar ${esc(s.name)}">
-        <i class="fa-solid fa-pen text-[10px]"></i>
-      </button>
-      <button onclick="deleteSeller(${i})" class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Eliminar definitivamente" aria-label="Eliminar ${esc(s.name)}">
+    <div class="flex items-center gap-1 shrink-0">
+      <button onclick="editSeller(${i})" class="btn-line w-8 h-8 rounded-lg" title="Editar" aria-label="Editar ${esc(s.name)}"><i class="fa-solid fa-pen text-[10px]"></i></button>
+      <button onclick="toggleSellerActive(${i})" class="btn-line w-8 h-8 rounded-lg" title="${on ? 'Desactivar' : 'Activar'}" aria-label="${on ? 'Desactivar' : 'Activar'} ${esc(s.name)}"><i class="fa-solid ${on ? 'fa-user-slash' : 'fa-user-check'} text-[10px]"></i></button>
+      <button onclick="deleteSeller(${i})" class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Eliminar definitivamente de la base de datos" aria-label="Eliminar ${esc(s.name)}">
         <i class="fa-solid fa-trash text-[10px]"></i>
       </button>
     </div>
   </div>`;
     }
 
-    const renderSellers = renderCrew;
-
-    /* ==================== TARJETA DE JORNADA (vendedor) ====================
-   1) Papelera: confirm() nativo → deleteCrewCard(u.id) → renderCrew()
-   2) Estado de cuenta: botón dinámico Activo/Inactivo → toggleSellerActive(u.id)
-   3) Jornada: datos intactos (Inicio/Fin) + toggleJornada(u.id) Finalizar/Iniciar
-   NOTA: si tu deleteCrewCard() ya muestra su propio confirmDialog, quítalo de
-   allí para no pedir doble confirmación (aquí ya se pide con confirm()). */
-
-  /* Papelera de la tarjeta: confirmación nativa + borrado directo + persistencia y sync */
-function onCrewCardDelete(id) {
-    const s = sellerById(id) || {};
-    const nombre = s.name || id;
-    
-    if (!confirm('¿Eliminar al vendedor ' + nombre + '?\nSe limpiarán su jornada y sus pedidos de hoy.')) {
-        return;
-    }
-    
-    if (db.sellers && Array.isArray(db.sellers)) {
-        db.sellers = db.sellers.filter(x => x.id !== id && x.name !== id && x.id != id);
-    }
-    
-    if (db.jornada && db.jornada[id]) {
-        delete db.jornada[id];
-    }
-    
-    if (typeof saveDB === 'function') saveDB();
-    if (typeof queueCloudSync === 'function') queueCloudSync(0);
-    
-    if (typeof renderCrew === 'function') {
-        renderCrew();
-    } else if (typeof renderSellers === 'function') {
-        renderSellers();
-    }
-} // <--- AQUÍ SE CIERRA onCrewCardDelete
-
-function crewCardHTML(u, today) {
-    const j = db.jornada ? db.jornada[u.id] : null;
-    const jOpen = !!(j && j.start && !j.end);
-    const on = u.active !== false && u.active !== 'false' && u.active !== 0;
-    const mine = today.filter(o => o.sellerId === u.id);
-
-    return `
+    /* Tarjeta de jornada: papelera arriba a la derecha + botón Activo/Inactivo dinámico */
+    function crewCardHTML(u, today) {
+      const j = db.jornada ? db.jornada[u.id] : null;
+      const jOpen = !!(j && j.start && !j.end);
+      const on = isSellerActive(u);
+      const mine = (today || []).filter(o => o.sellerId === u.id);
+      return `
   <div class="card">
     <div class="flex items-center gap-3">
       <div class="w-11 h-11 rounded-full bg-navy-900 text-acc font-disp font-bold flex items-center justify-center text-base shrink-0">${esc(u.name).charAt(0)}</div>
@@ -1830,22 +1804,17 @@ function crewCardHTML(u, today) {
         <div class="font-bold text-sm text-navy-900 truncate">${esc(u.name)}</div>
         <div class="text-[11px] text-steel-500">${esc(u.id)} · ${esc(u.zone)}</div>
       </div>
-      <!-- 2) Estado de la cuenta: etiqueta dinámica Activo/Inactivo -->
       <button type="button" onclick="toggleSellerActive('${esc(u.id)}')"
               class="${on ? 'btn-ok' : 'btn-line'} text-xs py-1 px-3 rounded-lg shrink-0"
               title="${on ? 'Cuenta activa — clic para desactivar' : 'Cuenta inactiva — clic para activar'}">
         <i class="fa-solid ${on ? 'fa-user-check' : 'fa-user-slash'}"></i> ${on ? 'Activo' : 'Inactivo'}
       </button>
-      <!-- 1) Papelera: confirm() → deleteCrewCard → renderCrew -->
-      <button type="button" onclick="onCrewCardDelete('${esc(u.id)}')"
+      <button type="button" onclick="deleteCrewCard('${esc(u.id)}')"
               class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 flex items-center justify-center shrink-0"
-              title="Eliminar vendedor, su jornada de hoy y sus pedidos de hoy"
-              aria-label="Eliminar ${esc(u.name)}">
+              title="Eliminar vendedor, su jornada de hoy y sus pedidos de hoy" aria-label="Eliminar ${esc(u.name)}">
         <i class="fa-solid fa-trash text-[10px]"></i>
       </button>
     </div>
-
-    <!-- 3) Datos de la jornada: intactos -->
     <div class="grid grid-cols-2 gap-3 mt-4">
       <div class="bg-steel-50 border border-steel-200 rounded-xl py-2 text-center">
         <div class="kicker">Inicio</div>
@@ -1856,21 +1825,19 @@ function crewCardHTML(u, today) {
         <div class="text-sm font-bold font-mono text-navy-900">${j && j.end ? fT(j.end) : '--:--'}</div>
       </div>
     </div>
-
     <div class="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-steel-200">
       <span class="text-xs text-steel-500 flex items-center gap-1.5">
         <span class="w-2 h-2 rounded-full ${jOpen ? 'bg-emerald-500 xlive-dot' : 'bg-steel-400'}"></span>
         Pedidos hoy: <b class="text-navy-900">${mine.length}</b>
       </span>
-      <!-- 3) toggleJornada: etiqueta según jornada abierta, no según estado de cuenta -->
-      <button type="button" onclick="toggleJornada('${esc(u.id)}')"
-              class="${jOpen ? 'btn-line' : 'btn-navy'} text-xs py-1 px-3 rounded-lg">
+      <button type="button" onclick="toggleJornada('${esc(u.id)}')" class="${jOpen ? 'btn-line' : 'btn-navy'} text-xs py-1 px-3 rounded-lg">
         ${jOpen ? '<i class="fa-solid fa-flag-checkered"></i> Finalizar' : '<i class="fa-solid fa-flag"></i> Iniciar'}
       </button>
     </div>
   </div>`;
-}
+    }
 
+    /* Re-render preservando el estado `open` de la tarjeta grande de gestión */
     function renderCrew() {
       const el = document.getElementById('crew-body');
       if (!el) return;
@@ -1879,6 +1846,11 @@ function crewCardHTML(u, today) {
       const d = document.getElementById('sellerMgmt');
       if (d) d.open = (prevOpen === undefined) ? true : prevOpen;
     }
+    function ensureSellerMgmtOpen() {
+      const d = document.getElementById('sellerMgmt');
+      if (d) d.open = true;
+    }
+    const renderSellers = renderCrew; /* alias de compatibilidad */
 
     /* ============================ 15. ACCIONES DE NEGOCIO ============================ */
     function submitOrder() {
@@ -1905,12 +1877,13 @@ function crewCardHTML(u, today) {
       });
       logActivity('fa-file-invoice', `Pedido ${number} generado por ${session.name}`);
       cart = []; saveCart(); saveDB();
+      queueCloudSync(0);
       toast(`Pedido <b>${number}</b> enviado a oficina.`, 'ok');
       go('history');
     }
 
     function openOrderDetail(id) {
-      const o = db.orders.find(x => x.id === id); if (!o) return;
+      const o = (db.orders || []).find(x => x.id === id); if (!o) return;
       openModal(`
     <div class="p-6 space-y-5 overflow-y-auto">
       <div class="flex items-start justify-between gap-3">
@@ -1967,7 +1940,7 @@ function crewCardHTML(u, today) {
 
     function setOrderStatus(id, st) {
       if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
-      const o = db.orders.find(x => x.id === id); if (!o) return;
+      const o = (db.orders || []).find(x => x.id === id); if (!o) return;
       const doIt = () => {
         if (st === 'despachado') {
           o.items.forEach(i => {
@@ -1978,9 +1951,9 @@ function crewCardHTML(u, today) {
         o.status = st;
         o.history.push({ status: st, ts: Date.now(), by: session.name });
         logActivity(st === 'aprobado' ? 'fa-circle-check' : st === 'despachado' ? 'fa-truck-fast' : 'fa-circle-xmark',
-          `Pedido ${o.number} ${ST[st].l.toLowerCase()} por ${session.name}`);
+          `Pedido ${o.number} ${(ST[st] || {}).l.toLowerCase()} por ${session.name}`);
         saveDB(); renderView(); setNav();
-        toast(`Pedido <b>${esc(o.number)}</b> marcado como ${ST[st].l}.`, st === 'rechazado' ? 'warn' : 'ok');
+        toast(`Pedido <b>${esc(o.number)}</b> marcado como ${(ST[st] || {}).l}.`, st === 'rechazado' ? 'warn' : 'ok');
       };
       if (st === 'rechazado') confirmDialog('Rechazar pedido', `¿Rechazar <b>${esc(o.number)}</b> de ${esc((o.client || {}).name || 'cliente')}?`, 'Rechazar', doIt, true);
       else if (st === 'despachado') confirmDialog('Despachar pedido', `¿Confirmar despacho de <b>${esc(o.number)}</b>? Se descontará el stock del inventario.`, 'Despachar', doIt, false);
@@ -2036,7 +2009,8 @@ function crewCardHTML(u, today) {
       }, true);
     }
 
-    /* ==================== REGISTRO/EDICIÓN DE VENDEDOR ==================== */
+    /* ============================ 16. CRUD DE VENDEDORES (solo admin + Firestore en vivo) ============================ */
+    /* PRESERVADO: creación, edición, baja/reactivación y eliminación funcionan igual que antes */
     function saveSellerForm(e) {
       e.preventDefault();
       if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
@@ -2048,18 +2022,18 @@ function crewCardHTML(u, today) {
 
       if (!name || !id || !zone || !pin) { toast('Completa todos los campos.', 'warn'); return; }
       if (!/^\d{4}$/.test(pin)) { toast('El PIN debe tener exactamente 4 dígitos.', 'warn'); return; }
-      if (getSellers().some(s => s.id.toLowerCase() === id.toLowerCase() && s.id !== editId)) {
+      if (getSellers().some(s => (s.id || '').toLowerCase() === id.toLowerCase() && s.id !== editId)) {
         toast('Esa cédula/ID ya está asignada a otro vendedor.', 'warn'); return;
       }
-      if (getSellers().some(s => s.name.toLowerCase() === name.toLowerCase() && s.id !== editId)) {
+      if (getSellers().some(s => (s.name || '').toLowerCase() === name.toLowerCase() && s.id !== editId)) {
         toast('Ya existe un vendedor con ese nombre (se usa para el login).', 'warn'); return;
       }
 
       if (editId) {
         const s = sellerById(editId);
         if (!s) { toast('El vendedor a editar ya no existe.', 'bad'); return; }
-      s.name = name; s.id = id; s.zone = zone; s.pin = pin; s.active = true;  
-        if (s.active === undefined) s.active = true;
+        if (editId !== id && db.jornada[editId]) { db.jornada[id] = db.jornada[editId]; delete db.jornada[editId]; }
+        s.name = name; s.id = id; s.zone = zone; s.pin = pin;
         logActivity('fa-user-pen', `Vendedor actualizado: ${name} (${id})`);
         saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); ensureSellerMgmtOpen();
         toast(`Ficha de <b>${esc(name)}</b> actualizada y sincronizada.`, 'ok');
@@ -2067,18 +2041,13 @@ function crewCardHTML(u, today) {
         getSellers().push({ id, name, zone, pin, active: true });
         logActivity('fa-user-plus', `Vendedor registrado: ${name} (${id}) — zona ${zone}`);
         saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); ensureSellerMgmtOpen();
-        toast(`<b>${esc(name)}</b> registrado y activo. Ya puede iniciar sesión con su PIN desde cualquier teléfono.`, 'ok');
+        toast(`<b>${esc(name)}</b> registrado. Ya puede iniciar sesión con su PIN desde cualquier teléfono.`, 'ok');
       }
-    }
-
-    function ensureSellerMgmtOpen() {
-      const d = document.getElementById('sellerMgmt');
-      if (d) d.open = true;
     }
 
     function resetSellerForm() {
       const form = document.getElementById('sellerForm'); if (form) form.reset();
-      $('#s-editId').value = '';
+      const eid = document.getElementById('s-editId'); if (eid) eid.value = '';
       const idInput = $('#s-id'); if (idInput) idInput.placeholder = nextSellerId();
       const btn = $('#sellerSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Registrar vendedor';
     }
@@ -2098,6 +2067,7 @@ function crewCardHTML(u, today) {
       toast(`Editando a <b>${esc(s.name)}</b>.`, 'info');
     }
 
+    /* PURGA COMPLETA: vendedor + jornada/asistencia + pedidos creados HOY */
     function purgeSellerById(id) {
       const s = sellerById(id);
       const name = s ? s.name : id;
@@ -2105,64 +2075,42 @@ function crewCardHTML(u, today) {
       if (idx >= 0) getSellers().splice(idx, 1);
       if (db.jornada) delete db.jornada[id];
 
-      const before = db.orders.length;
+      const before = (db.orders || []).length;
       db.orders = db.orders.filter(o => !(o.sellerId === id && o.ts >= t0()));
       const removed = before - db.orders.length;
 
       logActivity('fa-user-minus', `Vendedor eliminado: ${name} — jornada y ${removed} pedido(s) de hoy borrados`);
       saveDB();
-      queueCloudSync(0);
+      queueCloudSync(0);   /* Firestore al instante → onSnapshot actualiza los demás teléfonos */
       resetSellerForm();
-      renderCrew();
+      renderCrew();        /* la tarjeta desaparece de la pantalla YA */
       return removed;
     }
 
+    /* Cestica de la TARJETA de jornada */
     function deleteCrewCard(id) {
-      deleteSellerById(id);
-    }
-
-    function deleteSeller(i) {
-      if (!isAdmin()) {
-        toast('Acción exclusiva de Administración.', 'bad');
-        return;
-      }
-      const s = getSellers()[i];
-      if (!s) return;
-      deleteSellerById(s.id || s.name);
-    }
-
-    function deleteSellerById(identifier) {
-      if (!isAdmin()) {
-        toast('Acción exclusiva de Administración.', 'bad');
-        return;
-      }
-
-      const s = sellerById(identifier);
-      const name = s ? (s.name || s.id) : identifier;
-      const sId = s ? (s.id || s.name) : identifier;
-
-      confirmDialog('Eliminar vendedor', `¿Eliminar a <b>${esc(name)}</b> definitivamente? Se eliminará de la lista y se cerrará su jornada.`, 'Eliminar', () => {
-        let index = db.sellers.findIndex(item => item.id === sId || item.name === name);
-        if (index !== -1) {
-          db.sellers.splice(index, 1);
-        }
-
-        if (db.jornada) delete db.jornada[sId];
-        if (db.orders) {
-          db.orders = db.orders.filter(o => o.sellerId !== sId && o.sellerName !== name);
-        }
-
-        saveDB();
-        queueCloudSync(0);
-        renderCrew();
-        toast(`Vendedor <b>${esc(name)}</b> eliminado con éxito.`, 'ok');
+      if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
+      const s = sellerById(id);
+      const name = s ? s.name : id;
+      const nToday = (db.orders || []).filter(o => o.sellerId === id && o.ts >= t0()).length;
+      const msg = `Se eliminará a <b>${esc(name)}</b> y se limpiarán de la nube su jornada y asistencia${nToday ? `, junto con <b>${nToday}</b> pedido(s) creados hoy` : ''}. Los pedidos de días anteriores se conservan en el historial. Esta acción no se puede deshacer.`;
+      confirmDialog('Eliminar vendedor y su jornada de hoy', msg, 'Eliminar todo', () => {
+        const removed = purgeSellerById(id);
+        toast(`<b>${esc(name)}</b> eliminado${removed ? ` · ${removed} pedido(s) de hoy borrados` : ''}. Tarjeta de jornada actualizada.`, 'warn');
       }, true);
+    }
+
+    /* Cestica de la LISTA de Gestión de Vendedores (mismo mecanismo, por ID seguro) */
+    function deleteSeller(i) {
+      if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
+      const s = getSellers()[i]; if (!s) return;
+      deleteCrewCard(s.id);
     }
 
     /* ============================ 17. VISTAS — INVENTARIO / RESPALDO ============================ */
     function invRows() {
       const q = (ui.invQ || '').toLowerCase().trim();
-      const list = (db.products || PRODUCTS).filter(p => !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
+      const list = (Array.isArray(db.products) ? db.products : PRODUCTS).filter(p => !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
       if (!list.length) {
         return `<div class="card text-center py-10 space-y-2">
       <i class="fa-solid fa-box-open text-3xl text-steel-300"></i>
@@ -2217,8 +2165,8 @@ function crewCardHTML(u, today) {
       const sizeKB = (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1);
       const ci = cloudInfo();
       const cards = [
-        { ic: 'fa-file-invoice', l: 'Pedidos', v: db.orders.length, cls: 'bg-navy-800 text-white' },
-        { ic: 'fa-filter', l: 'Productos', v: (db.products || PRODUCTS).length, cls: 'bg-navy-700 text-white' },
+        { ic: 'fa-file-invoice', l: 'Pedidos', v: (db.orders || []).length, cls: 'bg-navy-800 text-white' },
+        { ic: 'fa-filter', l: 'Productos', v: (Array.isArray(db.products) ? db.products : PRODUCTS).length, cls: 'bg-navy-700 text-white' },
         { ic: 'fa-users', l: 'Vendedores', v: getSellers().length, cls: 'bg-steel-500 text-white' },
         { ic: 'fa-hard-drive', l: 'Tamaño', v: sizeKB + ' KB', cls: 'bg-acc text-navy-950' }
       ];
@@ -2284,7 +2232,8 @@ function crewCardHTML(u, today) {
   </div>`;
     }
 
-    /* ============================ 18. GESTIÓN CATÁLOGO VISUAL ============================ */
+    /* ============================ 18. GESTIÓN CATÁLOGO VISUAL (CRUD solo admin) ============================ */
+    /* PRESERVADO: agregar, editar, subir fotos y eliminar filtros funciona igual que antes */
     const STORAGE_KEY = 'carsev_filters_catalog_v1';
     const defaultFilters = [];
 
@@ -2310,7 +2259,7 @@ function crewCardHTML(u, today) {
     function renderFilterCatalogGrid() {
       const grid = document.getElementById('filterCatalogGrid');
       if (!grid) return;
-      const admin = isAdmin();
+      const admin = isAdmin(); /* los botones de edición solo existen para Administración */
       const all = getFilters().map((f, i) => ({ ...f, __i: i }));
       const q = (ui.filterQ || '').toLowerCase().trim();
       const list = all.filter(f => !q ||
@@ -2393,7 +2342,7 @@ function crewCardHTML(u, today) {
     }
 
     function handleFilterPhoto(input) {
-      if (!isAdmin()) return;
+      if (!isAdmin()) return; /* exclusivo de Administración */
       const file = input.files && input.files[0];
       if (!file) return;
       if (!/^image\//.test(file.type)) { toast('Selecciona un archivo de imagen (JPG o PNG).', 'warn'); input.value = ''; return; }
@@ -2441,7 +2390,7 @@ function crewCardHTML(u, today) {
 
     function resetAdminForm() {
       const form = document.getElementById('filterAdminForm'); if (form) form.reset();
-      $('#editIndex').value = '';
+      const ei = document.getElementById('editIndex'); if (ei) ei.value = '';
       pendingFilterPhoto = null;
       const pv = document.getElementById('imgPreview'); if (pv) pv.src = FILTER_IMG_FALLBACK;
       const btn = $('#filterSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar filtro';
@@ -2473,10 +2422,12 @@ function crewCardHTML(u, today) {
       }, true);
     }
 
-    /* ============================ 19. MOTOR DE RENDERIZADO ============================ */
+    /* ============================ 19. MOTOR DE RENDERIZADO (filtrado por rol) ============================ */
     function renderView() {
       const v = $('#view');
       if (!v) return;
+      /* Filtrado estricto: si la vista no pertenece al NAV del rol actual,
+         se sustituye por la vista inicial. Un vendedor JAMÁS renderiza vistas admin. */
       if (session && !navIdsFor().includes(ui.view)) ui.view = defaultView();
       let html = '';
       try {
@@ -2515,36 +2466,16 @@ function crewCardHTML(u, today) {
       if (ui.view === 'catalog') renderFilterCatalogGrid();
     }
 
-   /* ==================== 20. ARRANQUE ==================== */
-function initApp() {
-    cloudInit();
-    loadDB();
-    
-    // Listener en tiempo real para sincronizar la nube instantáneamente
-    if (typeof cloudRef === 'function') {
-      try {
-        cloudRef().onSnapshot(snap => {
-          if (snap.exists) {
-            applyRemote(snap.data());
-            if (typeof renderLogin === 'function' && document.getElementById('login-name')) {
-              renderLogin();
-            }
-            if (typeof renderCrew === 'function' && document.getElementById('crew-body')) {
-              renderCrew();
-            }
-          }
-        });
-      } catch (e) {
-        console.warn('No se pudo inicializar el listener en tiempo real:', e);
-      }
+    /* ============================ 20. ARRANQUE ============================ */
+    function initApp() {
+      cloudInit(); /* Firestore + tiempo real + caché offline (PWA intacta) */
+      if (!session || !validateSession()) { renderLogin(); return; }
+      loadCart();
+      if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
+      renderShell();
+      renderView();
     }
 
-    if (!session || !validateSession()) { renderLogin(); return; }
-    loadCart();
-    if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
-    renderShell();
-    renderView();
-}
     document.addEventListener('DOMContentLoaded', initApp);
     window.addEventListener('online', () => { updateConnChip(); if (cloudReady) { cloudPull(); if (cloudDirty) queueCloudSync(500); } });
     window.addEventListener('offline', updateConnChip);
