@@ -975,12 +975,12 @@
       sessionStorage.removeItem(SESS_KEY); session = null;
       return false;
     }
-   function onLoginRoleChange() {
+function onLoginRoleChange() {
   const role = $('#login-role')?.value;
   const sellerPick = $('#seller-pick');
+  
   if (role === 'seller') {
     if (sellerPick) sellerPick.style.display = 'block';
-    if (typeof renderLogin === 'function') renderLogin();
   } else {
     if (sellerPick) sellerPick.style.display = 'none';
   }
