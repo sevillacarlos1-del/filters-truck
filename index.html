@@ -2556,23 +2556,25 @@
       v.innerHTML = html;
       if (ui.view === 'catalog') renderFilterCatalogGrid();
     }
-
-    /* ============================ 20. ARRANQUE ============================ */
-    function initApp() {
+/* ======================== 20. ARRANQUE ======================== */
+function initApp() {
     cloudInit(); /* Firestore + tiempo real + caché offline (PWA intacta) */
     
-    // Forzar la red de Firebase al arrancar para evitar el bloqueo offline
-    if (typeof firebase !== 'undefined' && firebase.firestore) {
-        firebase.firestore().enableNetwork().catch(() => {});
-    }
+    // Forzar la red de Firebase con un pequeño respiro para ganarle la partida al arranque
+    setTimeout(() => {
+        if (typeof firebase !== 'undefined' && firebase.firestore) {
+            firebase.firestore().enableNetwork()
+                .then(() => console.log("¡Red abierta con éxito desde el arranque!"))
+                .catch(err => console.log("Error al abrir red:", err));
+        }
+    }, 1000);
 
     if (!session || !validateSession()) { renderLogin(); return; }
     loadCart();
     if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
     renderShell();
     renderView();
-}
-
+    }
     document.addEventListener('DOMContentLoaded', initApp);
     window.addEventListener('online', () => { updateConnChip(); if (cloudReady) { cloudPull(); if (cloudDirty) queueCloudSync(500); } });
     window.addEventListener('offline', updateConnChip);
