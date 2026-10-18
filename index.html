@@ -608,7 +608,10 @@
     function openModal(html, wide = false) {
       const root = $('#modal-root');
       modalPrevFocus = document.activeElement;
-      pendingConfirm = null;
+      /* FIX: openModal ya NO borra pendingConfirm. Ese reset destruía el callback
+         que confirmDialog acababa de asignar, por lo que NINGÚN botón de
+         confirmación (Vaciar cesta, Eliminar vendedor, Despachar, Salir…)
+         ejecutaba su acción. closeModal() sigue limpiándolo al cerrar. */
       root.innerHTML = `
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-900/60 backdrop-blur-sm anim-fade" data-close="1">
       <div class="bg-white rounded-2xl shadow-2xl w-full ${wide ? 'max-w-4xl' : 'max-w-lg'} overflow-hidden border border-steel-200 flex flex-col max-h-[90vh]" data-modal-panel="1" tabindex="-1">
@@ -643,7 +646,6 @@
     });
 
     function confirmDialog(title, msg, okLabel, onOk, danger = true) {
-      pendingConfirm = typeof onOk === 'function' ? onOk : null;
       openModal(`
     <div class="p-6 space-y-4">
       <h3 class="text-base font-bold text-navy-900">${esc(title)}</h3>
@@ -653,6 +655,8 @@
         <button onclick="runConfirm()" class="px-4 py-2 text-xs rounded-xl font-bold text-white ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-navy-900 hover:bg-navy-800'}">${esc(okLabel)}</button>
       </div>
     </div>`);
+      /* FIX: el callback se asigna DESPUÉS de openModal para que no sea anulado */
+      pendingConfirm = typeof onOk === 'function' ? onOk : null;
     }
 
     function runConfirm() {
@@ -829,24 +833,27 @@
       saveCart(); renderView(); setNav();
     }
 
-    /* FIX 1: eliminación de ítems de la cesta — borra al instante y refresca */
+    /* FIX 1: eliminación de ítems de la cesta — borra al instante y refresca.
+       Sin loadCart(): el carrito en memoria es la fuente de verdad durante la
+       sesión (leer localStorage aquí podía restaurar un estado rancio con
+       índices desfasados y borrar la línea equivocada). */
     function removeLine(i) {
-      loadCart(); /* asegura estado fresco antes de borrar */
-      if (typeof i !== 'number' || !cart[i]) { renderView(); return; }
-      const name = cart[i].name || cart[i].code || 'Artículo';
-      cart.splice(i, 1);
-      saveCart();
-      renderView(); setNav();
+      const idx = Number(i);
+      if (!Number.isInteger(idx) || !cart[idx]) { renderView(); setNav(); return; }
+      const name = cart[idx].name || cart[idx].code || 'Artículo';
+      cart.splice(idx, 1);
+      saveCart();           /* persiste y refresca el badge del menú */
+      renderView();         /* repinta la cesta de inmediato */
+      setNav();
       toast(`<b>${esc(name)}</b> eliminado del pedido.`, 'warn', 2200);
     }
 
     /* Alias de compatibilidad: cualquier llamada antigua a removeItemFromCart funciona igual */
     const removeItemFromCart = removeLine;
 
-    /* Vaciar TODA la cesta, con confirmación */
+    /* Vaciar TODA la cesta, con confirmación (FIX: el confirm ahora SÍ ejecuta la acción) */
     function clearCart() {
-      loadCart();
-      if (!cart.length) return;
+      if (!cart.length) { renderView(); setNav(); return; }
       confirmDialog('Vaciar pedido', `¿Eliminar <b>todos</b> los artículos de la cesta (${cartCount()} u)?`, 'Vaciar', () => {
         cart = [];
         saveCart();
@@ -896,7 +903,8 @@
       const j = db.jornada[s.id];
 
       const doEnd = () => {
-        if (j) j.end = Date.now();
+        const cur = (db.jornada || {})[s.id]; /* re-resuelto al confirmar (incluye cambios de nube) */
+        if (cur) cur.end = Date.now();
         logActivity('fa-flag-checkered', `${s.name} finalizó jornada`);
         saveDB();               /* persiste local + broadcast */
         queueCloudSync(0);      /* FIX 3: sube a Firebase de inmediato */
@@ -904,6 +912,7 @@
         toast(`Jornada de <b>${esc(s.name)}</b> finalizada y sincronizada.`, 'info');
       };
       const doStart = () => {
+        if (!isSellerActive(s)) { toast(`<b>${esc(s.name)}</b> está De baja. Reactiva su cuenta para iniciar la jornada.`, 'warn', 4000); return; }
         db.jornada[s.id] = { start: Date.now(), end: null };
         logActivity('fa-play', `${s.name} inició jornada`);
         saveDB();
@@ -920,25 +929,52 @@
       }
     }
 
-    /* Activar/Desactivar cuenta = SOLO s.active. Al desactivar, cierra jornada abierta. */
-    function toggleSellerActive(identifier) {
+    /* FIX: el estado del vendedor es SIEMPRE explícito y controlado, sin inversiones.
+       setSellerActive(id, true)  → Activa: s.active = true al instante.
+       setSellerActive(id, false) → De baja: SOLO con confirmación (nunca accidental);
+                                    además cierra la jornada abierta del vendedor.
+       Nunca elimina al vendedor ni borra datos: únicamente cambia s.active. */
+    function setSellerActive(identifier, targetActive) {
       if (!isAdmin()) { toast('Acción exclusiva para Administración.', 'bad'); return; }
       loadDB();
-      const list = getSellers();
-      const s = (typeof identifier === 'number') ? list[identifier]
-        : list.find(x => x.id === identifier || x.name === identifier);
-      if (!s) return;
-      const nowActive = !isSellerActive(s);
-      s.active = nowActive;
-      if (!nowActive && db.jornada && db.jornada[s.id] && !db.jornada[s.id].end) {
-        db.jornada[s.id].end = Date.now();
+      const s = (typeof identifier === 'number') ? getSellers()[identifier] : sellerById(identifier);
+      if (!s) { toast('Vendedor no encontrado en la base de datos.', 'bad'); return; }
+
+      const apply = () => {
+        /* Se re-resuelve al momento de aplicar (el callback corre tras el modal;
+            así los cambios de nube recibidos mientras tanto no se pierden). */
+        const t = (typeof identifier === 'number') ? getSellers()[identifier] : sellerById(identifier);
+        const u = t || s;
+        u.active = (targetActive !== false); /* fija el estado exactamente presionado */
+        if (!u.active && db.jornada && db.jornada[u.id] && !db.jornada[u.id].end) {
+          db.jornada[u.id].end = Date.now(); /* apagar cierra jornada abierta (controlado) */
+        }
+        logActivity(u.active ? 'fa-user-check' : 'fa-user-slash',
+          `${u.active ? 'Vendedor activado' : 'Vendedor desactivado'}: ${u.name}`);
+        saveDB();
+        queueCloudSync(0);
+        if (typeof renderCrew === 'function') renderCrew();
+        toast(`Vendedor <b>${esc(u.name)}</b> ahora está <b>${u.active ? 'Activo' : 'De baja'}</b>.`,
+          u.active ? 'ok' : 'warn');
+      };
+
+      if (targetActive === false && isSellerActive(s)) {
+        /* APAGADO CONTROLADO: poner De baja pasa siempre por confirmación */
+        confirmDialog('Poner De baja',
+          `¿Poner <b>De baja</b> a <b>${esc(s.name)}</b>? No podrá iniciar sesión hasta que lo reactives. Su cuenta NO se elimina.`,
+          'Poner De baja', apply, true);
+        return;
       }
-      logActivity(nowActive ? 'fa-user-check' : 'fa-user-slash',
-        `${nowActive ? 'Vendedor reactivado' : 'Vendedor desactivado'}: ${s.name}`);
-      saveDB();
-      queueCloudSync(0);
-      if (typeof renderCrew === 'function') renderCrew();
-      toast(`Vendedor <b>${esc(s.name)}</b> ahora está <b>${nowActive ? 'Activo' : 'Inactivo'}</b>.`, nowActive ? 'ok' : 'warn');
+      apply(); /* activación directa: s.active = true al instante */
+    }
+
+    function activateSeller(identifier) { setSellerActive(identifier, true); }
+
+    /* toggleSellerActive (compatibilidad): resuelve por ID/índice y aplica el
+       estado opuesto al actual con las mismas reglas controladas de arriba. */
+    function toggleSellerActive(identifier) {
+      const s = (typeof identifier === 'number') ? getSellers()[identifier] : sellerById(identifier);
+      setSellerActive(identifier, s ? !isSellerActive(s) : true);
     }
 
     function doLogin() {
@@ -1809,8 +1845,8 @@
   </details>
 
   <div class="grid md:grid-cols-2 gap-4">
-    ${active.length ? active.map(u => crewCardHTML(u, today)).join('')
-      : `<div class="card md:col-span-2 text-sm text-steel-500 text-center py-8">No hay vendedores activos. Reactiva o registra uno desde la gestión superior.</div>`}
+    ${sellers.length ? sellers.map(u => crewCardHTML(u, today)).join('')
+      : `<div class="card md:col-span-2 text-sm text-steel-500 text-center py-8">No hay vendedores registrados. Agrega el primero desde la gestión superior.</div>`}
   </div>`;
     }
 
@@ -1828,9 +1864,9 @@
       <div class="text-[11px] text-steel-500 truncate"><span class="font-mono">${esc(s.id)}</span> · ${esc(s.zone)} · PIN <span class="font-mono">${esc(s.pin)}</span></div>
     </div>
     <div class="flex items-center gap-1 shrink-0">
-      <button onclick="editSeller(${i})" class="btn-line w-8 h-8 rounded-lg" title="Editar" aria-label="Editar ${esc(s.name)}"><i class="fa-solid fa-pen text-[10px]"></i></button>
-      <button onclick="toggleSellerActive(${i})" class="btn-line w-8 h-8 rounded-lg" title="${on ? 'Desactivar' : 'Activar'}" aria-label="${on ? 'Desactivar' : 'Activar'} ${esc(s.name)}"><i class="fa-solid ${on ? 'fa-user-slash' : 'fa-user-check'} text-[10px]"></i></button>
-      <button onclick="deleteSeller(${i})" class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Eliminar definitivamente de la base de datos" aria-label="Eliminar ${esc(s.name)}">
+      <button onclick="editSeller('${esc(s.id)}')" class="btn-line w-8 h-8 rounded-lg" title="Editar" aria-label="Editar ${esc(s.name)}"><i class="fa-solid fa-pen text-[10px]"></i></button>
+      <button onclick="setSellerActive('${esc(s.id)}', ${on ? 'false' : 'true'})" class="btn-line w-8 h-8 rounded-lg" title="${on ? 'Poner De baja (pedirá confirmación)' : 'Activar cuenta'}" aria-label="${on ? 'Poner De baja' : 'Activar'} ${esc(s.name)}"><i class="fa-solid ${on ? 'fa-user-slash' : 'fa-user-check'} text-[10px]"></i></button>
+      <button onclick="deleteSeller('${esc(s.id)}')" class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Eliminar definitivamente de la base de datos" aria-label="Eliminar ${esc(s.name)}">
         <i class="fa-solid fa-trash text-[10px]"></i>
       </button>
     </div>
@@ -1844,18 +1880,26 @@
       const on = isSellerActive(u);
       const mine = (today || []).filter(o => o.sellerId === u.id);
       return `
-  <div class="card">
+  <div class="card ${on ? '' : 'bg-steel-50 border-dashed border-steel-300'}">
     <div class="flex items-center gap-3">
-      <div class="w-11 h-11 rounded-full bg-navy-900 text-acc font-disp font-bold flex items-center justify-center text-base shrink-0">${esc(u.name).charAt(0)}</div>
+      <div class="w-11 h-11 rounded-full ${on ? 'bg-navy-900 text-acc' : 'bg-steel-200 text-steel-500'} font-disp font-bold flex items-center justify-center text-base shrink-0">${esc(u.name).charAt(0)}</div>
       <div class="flex-1 min-w-0">
-        <div class="font-bold text-sm text-navy-900 truncate">${esc(u.name)}</div>
+        <div class="font-bold text-sm text-navy-900 truncate flex items-center gap-2">${esc(u.name)}
+          <span class="tag border ${on ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-steel-100 text-steel-500 border-steel-200'}">${on ? 'Activo' : 'De baja'}</span>
+        </div>
         <div class="text-[11px] text-steel-500">${esc(u.id)} · ${esc(u.zone)}</div>
       </div>
-      <button type="button" onclick="toggleSellerActive('${esc(u.id)}')"
-              class="${on ? 'btn-ok' : 'btn-line'} text-xs py-1 px-3 rounded-lg shrink-0"
-              title="${on ? 'Cuenta activa — clic para desactivar' : 'Cuenta inactiva — clic para activar'}">
-        <i class="fa-solid ${on ? 'fa-user-check' : 'fa-user-slash'}"></i> ${on ? 'Activo' : 'Inactivo'}
-      </button>
+      ${on ? `
+      <button type="button" onclick="setSellerActive('${esc(u.id)}', false)"
+              class="btn-ok text-xs py-1 px-3 rounded-lg shrink-0"
+              title="Cuenta Activa — clic para poner De baja (se pedirá confirmación; nunca es accidental ni borra la cuenta)">
+        <i class="fa-solid fa-user-check"></i> Activo
+      </button>` : `
+      <button type="button" onclick="setSellerActive('${esc(u.id)}', true)"
+              class="btn-navy text-xs py-1 px-3 rounded-lg shrink-0"
+              title="Cuenta De baja — clic para Activar ahora (s.active = true)">
+        <i class="fa-solid fa-user-check"></i> Reactivar
+      </button>`}
       <button type="button" onclick="deleteCrewCard('${esc(u.id)}')"
               class="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 flex items-center justify-center shrink-0"
               title="Eliminar vendedor, su jornada de hoy y sus pedidos de hoy" aria-label="Eliminar ${esc(u.name)}">
@@ -2099,9 +2143,9 @@
       const btn = $('#sellerSaveBtn'); if (btn) btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Registrar vendedor';
     }
 
-    function editSeller(i) {
+    function editSeller(ref) {
       if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
-      const s = getSellers()[i]; if (!s) return;
+      const s = (typeof ref === 'number') ? getSellers()[ref] : sellerById(ref); if (!s) return;
       const d = document.getElementById('sellerMgmt'); if (d) d.open = true;
       $('#s-editId').value = s.id;
       $('#s-name').value = s.name;
@@ -2148,9 +2192,9 @@
     }
 
     /* Cestica de la LISTA de Gestión de Vendedores (mismo mecanismo, por ID seguro) */
-    function deleteSeller(i) {
+    function deleteSeller(ref) {
       if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
-      const s = getSellers()[i]; if (!s) return;
+      const s = (typeof ref === 'number') ? getSellers()[ref] : sellerById(ref); if (!s) return;
       deleteCrewCard(s.id);
     }
 
