@@ -1040,11 +1040,16 @@ const activos = sellers.filter(isOn);
   <option value="admin" ${currentRole === 'admin' ? 'selected' : ''}>Administración / Oficina</option>
 </select>
                     </div>
-                    <div id="seller-pick" style="display: ${currentRole === 'seller' ? 'block' : 'none'};">https://sevillacarlos1-del.github.io/filters-truck/
-                        <div class="flex items-center justify-between mb-1">
-                            <label class="lbl mb-0" for="login-name">Vendedor</label>
-                            <span class="text-[10px] text-steel-500 font-semibold">${activos.length} activo(s) de ${sellers.length}</span>
-                        </div>
+                    <div id="seller-pick" style="display: ${currentRole === 'seller' ? 'block' : 'none'};">
+  <div class="flex items-center justify-between mb-1">
+    <label class="lbl mb-0" for="login-name">Vendedor</label>
+    <span class="text-[10px] text-steel-500 font-semibold">${activos.length} activo(s) de ${sellers.length}</span>
+  </div>
+  <select id="login-name" class="input">
+    ${activos.length ? opts : '<option value="">Sin vendedores registrados</option>'}
+  </select>
+  <p id="seller-hint" class="text-[10px] text-steel-400 mt-1.5">¿Sin cuenta o sin clave? Solicítala a Administración.</p>
+</div>
                         <select id="login-name" class="input">
                             ${activos.length ? opts : '<option value="">Sin vendedores registrados</option>'}
                         </select>
