@@ -1002,7 +1002,8 @@ function onLoginRoleChange() {
     }
 
 function renderLogin() {
-    if (typeof loadDB === 'function') loadDB();
+  const currentRole = sessionStorage.getItem('preferred_login_role') || 'admin';  
+  if (typeof loadDB === 'function') loadDB();
 
     /* 1) Lectura directa y segura de db.sellers con respaldo */
     const sellers = (db && Array.isArray(db.sellers)) ? db.sellers : [];
@@ -1050,12 +1051,14 @@ const activos = sellers.filter(isOn);
                         <p id="seller-hint" class="text-[10px] text-steel-400 mt-1.5">¿Sin cuenta o sin clave? Solicítala a Administración.</p>
                     </div>
                     <div>
-                        <label class="lbl" id="pass-lbl" for="login-pass">Clave de acceso (PIN) *</label>
-                        <input type="password" id="login-pass" class="input font-mono tracking-widest text-lg text-center" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-                    </div>
-                    <button onclick="doLogin()" class="btn-navy w-full py-3 rounded-xl font-bold text-sm">
-                        <i class="fa-solid fa-right-to-bracket"></i> Ingresar al sistema
-                    </button>
+  <label class="lbl" id="pass-lbl" for="login-pass">
+    ${currentRole === 'seller' ? 'Clave de acceso (PIN)' : 'Contraseña de Administración'}
+  </label>
+  <input type="password" id="login-pass" class="input font-mono tracking-widest" placeholder="••••" />
+</div>
+<button onclick="doLogin()" class="btn-navy w-full py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2 shadow-hard hover:opacity-95 transition">
+  <i class="fa-solid fa-right-to-bracket"></i> Ingresar al sistema
+</button>
                 </div>
                 <div class="flex items-center justify-between text-[11px] text-steel-400 border-t border-steel-100 pt-4">
                     <span class="font-mono">${rifText}</span>
