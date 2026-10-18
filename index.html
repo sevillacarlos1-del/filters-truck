@@ -984,6 +984,12 @@ function onLoginRoleChange() {
   } else {
     if (sellerPick) sellerPick.style.display = 'none';
   }
+  
+  // Guardamos el rol activo en sessionStorage para que renderLogin lo respete
+  sessionStorage.setItem('preferred_login_role', role);
+  if (typeof renderLogin === 'function') {
+    renderLogin();
+  }
 }
 
     function logout() {
@@ -1028,10 +1034,10 @@ const activos = sellers.filter(isOn);
                 <div class="space-y-4">
                     <div>
                         <label class="lbl">Rol de acceso</label>
-                        <select id="login-role" class="input" onchange="onLoginRoleChange()">
-                            <option value="seller">Vendedor / Comercial (móvil)</option>
-                            <option value="admin">Administración / Oficina</option>
-                        </select>
+                       <select id="login-role" class="input" onchange="onLoginRoleChange()">
+  <option value="seller" ${currentRole === 'seller' ? 'selected' : ''}>Vendedor / Comercial (móvil)</option>
+  <option value="admin" ${currentRole === 'admin' ? 'selected' : ''}>Administración / Oficina</option>
+</select>
                     </div>
                     <div id="seller-pick">
                         <div class="flex items-center justify-between mb-1">
