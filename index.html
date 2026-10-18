@@ -976,17 +976,21 @@
       return false;
     }
 function onLoginRoleChange() {
-  const role = $('#login-role')?.value;
+  const roleSelect = $('#login-role');
+  const role = roleSelect ? roleSelect.value : 'admin';
   const sellerPick = $('#seller-pick');
+  const loginPass = $('#login-pass');
   
-  if (role === 'seller') {
-    if (sellerPick) sellerPick.style.display = 'block';
-  } else {
-    if (sellerPick) sellerPick.style.display = 'none';
+  // Limpiar contraseña al cambiar de rol
+  if (loginPass) loginPass.value = '';
+  
+  // Mostrar u ocultar el bloque del vendedor de forma inmediata
+  if (sellerPick) {
+    sellerPick.style.display = (role === 'seller') ? 'block' : 'none';
   }
   
-  // Guardamos el rol activo en sessionStorage para que renderLogin lo respete
   sessionStorage.setItem('preferred_login_role', role);
+  
   if (typeof renderLogin === 'function') {
     renderLogin();
   }
