@@ -1010,13 +1010,11 @@ function renderLogin() {
     /* 1) Lectura directa y segura de db.sellers con respaldo */
     const sellers = (db && Array.isArray(db.sellers)) ? db.sellers : [];
 
-    /* 2) Filtro robusto que detecta activos por defecto o de forma explícita */
-    const isOn = s => !!s && (
-        s.active === true || s.active === 1 || s.active === 'true' ||
-        s.active === undefined || s.active === null
-    );
-    const activos = sellers.filter(isOn);
-
+   const isOn = s => !!s && (
+  s.active === true || s.active === 1 || s.active === 'true' ||
+  s.active === undefined || s.active === null
+);
+const activos = sellers.filter(isOn);
     /* 3) Generación de opciones blindada */
     const opts = activos.length ? activos.map(s => 
         `<option value="${s.id}">${s.name || s.id}${s.zone ? ' — ' + s.zone : ''}</option>`
