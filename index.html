@@ -975,25 +975,16 @@
       sessionStorage.removeItem(SESS_KEY); session = null;
       return false;
     }
-    function onLoginRoleChange() {
-      const role = $('#login-role')?.value;
-      const pick = $('#seller-pick');
-      const hint = $('#seller-hint');
-      const lbl = $('#pass-lbl');
-      const inp = $('#login-pass');
-      if (pick) pick.classList.toggle('hidden', role === 'admin');
-      if (hint) hint.classList.toggle('hidden', role === 'admin');
-      if (lbl && inp) {
-        if (role === 'admin') {
-          lbl.textContent = 'Contraseña administrativa *';
-          inp.maxLength = 24; inp.inputMode = 'text'; inp.placeholder = '••••••••••';
-        } else {
-          lbl.textContent = 'Clave de acceso (PIN) *';
-          inp.maxLength = 4; inp.inputMode = 'numeric'; inp.placeholder = '••••';
-        }
-        inp.value = '';
-      }
-    }
+   function onLoginRoleChange() {
+  const role = $('#login-role')?.value;
+  const sellerPick = $('#seller-pick');
+  if (role === 'seller') {
+    if (sellerPick) sellerPick.style.display = 'block';
+    if (typeof renderLogin === 'function') renderLogin();
+  } else {
+    if (sellerPick) sellerPick.style.display = 'none';
+  }
+}
 
     function logout() {
       confirmDialog('Cerrar sesión', '¿Salir del sistema? Los datos locales se conservan en este dispositivo.', 'Salir', () => {
@@ -1010,10 +1001,7 @@ function renderLogin() {
     /* 1) Lectura directa y segura de db.sellers con respaldo */
     const sellers = (db && Array.isArray(db.sellers)) ? db.sellers : [];
 
-   const isOn = s => !!s && (
-  s.active === true || s.active === 1 || s.active === 'true' ||
-  s.active === undefined || s.active === null
-);
+  const isOn = s => !!s && s.active !== false;
 const activos = sellers.filter(isOn);
     /* 3) Generación de opciones blindada */
     const opts = activos.length ? activos.map(s => 
