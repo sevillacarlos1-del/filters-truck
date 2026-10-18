@@ -1003,7 +1003,6 @@ function renderLogin() {
   const currentRole = roleSelect ? roleSelect.value : (sessionStorage.getItem('preferred_login_role') || 'admin');
 
   if (typeof loadDB === 'function') loadDB();
-  const sellers = (db && Array.isArray(db.sellers)) ? db.sellers : [];
   const isOn = s => !!s && s.active !== false;
   const activos = sellers.filter(isOn);
   const opts = activos.length ? activos.map(s => `<option value="${s.id}">${s.name || s.id}${s.zone ? ' - ' + s.zone : ''}</option>`).join('') : '';
