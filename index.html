@@ -2605,11 +2605,16 @@
 function initApp() {
     cloudInit(); /* Firestore + tiempo real + caché offline (PWA intacta) */
     
-    // Forzar la red de Firebase con un pequeño respiro para ganarle la partida al arranque
+    // Forzar la red de Firebase y disparar el pull de la nube de inmediato
     setTimeout(() => {
         if (typeof firebase !== 'undefined' && firebase.firestore) {
             firebase.firestore().enableNetwork()
-                .then(() => console.log("¡Red abierta con éxito desde el arranque!"))
+                .then(() => {
+                    console.log("¡Red abierta con éxito desde el arranque!");
+                    if (typeof cloudPull === 'function') {
+                        cloudPull(); // Forzar descarga de vendedores de inmediato
+                    }
+                })
                 .catch(err => console.log("Error al abrir red:", err));
         }
     }, 1000);
@@ -2619,10 +2624,11 @@ function initApp() {
     if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
     renderShell();
     renderView();
-    }
-    document.addEventListener('DOMContentLoaded', initApp);
-    window.addEventListener('online', () => { updateConnChip(); if (cloudReady) { cloudPull(); if (cloudDirty) queueCloudSync(500); } });
-    window.addEventListener('offline', updateConnChip);
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+window.addEventListener('online', () => { updateConnChip(); if (typeof cloudPull === 'function') { cloudPull(); } });
+window.addEventListener('offline', updateConnChip);
   </script>
 </body>
 
