@@ -982,25 +982,13 @@ function onLoginRoleChange() {
   const role = roleSelect.value;
   sessionStorage.setItem('preferred_login_role', role);
   
-  // Limpiar campos de entrada al cambiar
   const loginPass = document.getElementById('login-pass');
-  const loginName = document.getElementById('login-name');
   if (loginPass) loginPass.value = '';
-  if (loginName) loginName.value = '';
   
-  // Volver a renderizar la pantalla completa de login con el rol fresco
   if (typeof renderLogin === 'function') {
     renderLogin();
   }
 }
-  
-  sessionStorage.setItem('preferred_login_role', role);
-  
-  if (typeof renderLogin === 'function') {
-    renderLogin();
-  }
-
-
     function logout() {
       confirmDialog('Cerrar sesión', '¿Salir del sistema? Los datos locales se conservan en este dispositivo.', 'Salir', () => {
         sessionStorage.removeItem(SESS_KEY);
