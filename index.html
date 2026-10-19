@@ -1,6 +1,6 @@
 
+<!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -525,10 +525,19 @@
       applyingRemote = true;
       try {
         lastCloudRev = Math.max(lastCloudRev, data.rev || 0);
-        if (data.db) db = mergeRemote(data.db, db);
-        if (Array.isArray(data.carsev) && !cloudDirty) saveFiltersSilent(data.carsev);
+        /* FIX A: tolera documentos con formato antiguo (sellers/orders en la
+           raíz, sin envoltorio db). Los datos de la nube SIEMPRE se aplican. */
+        const rdb = (data.db && typeof data.db === 'object') ? data.db : data;
+        if (rdb && (rdb.sellers !== undefined || rdb.orders !== undefined || rdb.products !== undefined || rdb.jornada !== undefined)) {
+          db = mergeRemote(rdb, db);
+        }
+        if (Array.isArray(data.carsev) && !cloudDirty) { try { saveFiltersSilent(data.carsev); } catch (e) { } }
         migrateDB();
-        localStorage.setItem(DB_KEY, JSON.stringify(db));
+        /* FIX B: en modo incógnito o con cuota llena, setItem lanza una
+           excepción y ANULABA el renderCurrent(): el indicador quedaba verde
+           pero la lista de vendedores nunca se dibujaba. El fallo de guardado
+           ya no bloquea el repintado. */
+        try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch (e) { }
         renderCurrent();
         setCloudStatus('ok');
       } catch (err) {
@@ -1108,6 +1117,36 @@
     /* Reintento automático en pantalla de login mientras no haya vendedores */
     let loginRetryTimer = null;
 
+    /* FIX C (Vendedores Activos): refresca el desplegable de vendedores del
+       login EN CALIENTE, sin reconstruir la pantalla. Los vendedores que
+       llegan de la nube aparecen al instante SIN borrar el PIN escrito,
+       SIN colapsar el <select> en plena selección y SIN anular el primer
+       clic sobre "Ingresar al sistema". */
+    function refreshLoginSellers() {
+      const sel = document.getElementById('login-name');
+      if (!sel) return;
+      const activos = activeSellers();
+      const prev = sel.value;
+      sel.disabled = !activos.length;
+      sel.innerHTML = activos.length
+        ? activos.map(s => `<option value="${esc(s.id)}">${esc(s.name || s.id)}${s.zone ? ' — ' + esc(s.zone) : ''} · ${esc(s.id)}</option>`).join('')
+        : '<option value="">Sin vendedores registrados</option>';
+      if (prev && activos.some(s => s.id === prev)) sel.value = prev; /* conserva la selección */
+      const cnt = document.getElementById('seller-count');
+      if (cnt) cnt.textContent = `${activos.length} activo(s) de ${getSellers().length}`;
+      const roleEl = document.getElementById('login-role');
+      const role = (roleEl && roleEl.value) || sessionStorage.getItem('preferred_login_role') || 'seller';
+      const btn = document.querySelector('#app button[data-login-submit]');
+      if (btn) btn.disabled = (role === 'seller' && !activos.length);
+      const hint = document.getElementById('seller-hint');
+      if (hint && !activos.length) {
+        hint.className = `text-[10px] mt-1.5 font-semibold ${cloudStatus === 'ok' ? 'text-amber-600' : 'text-red-500'}`;
+        hint.textContent = cloudStatus === 'ok'
+          ? 'No hay vendedores activos en la nube. Regístralos o actívalos desde Administración (Jornada).'
+          : 'No se pudo descargar la lista desde la nube. Toca el indicador de estado (abajo) para reintentar.';
+      }
+    }
+
     function renderLogin() {
       if (typeof loadDB === 'function') loadDB();
 
@@ -1123,6 +1162,9 @@
       ).join('');
 
       const roleSelect = document.getElementById('login-role');
+      /* FIX D: conserva lo ya escrito si por alguna vía se reconstruye el
+         login (rol y clave/PIN no se pierden nunca). */
+      const prevPass = (document.getElementById('login-pass') || {}).value || '';
       const currentRole = roleSelect ? roleSelect.value
         : (sessionStorage.getItem('preferred_login_role') || 'seller');
 
@@ -1157,7 +1199,7 @@
           <div id="seller-pick" style="display: ${isSeller ? 'block' : 'none'};">
             <div class="flex items-center justify-between mb-1">
               <label class="lbl mb-0" for="login-name">Vendedor</label>
-              <span class="text-[10px] text-steel-500 font-semibold">${activos.length} activo(s) de ${sellers.length}</span>
+              <span id="seller-count" class="text-[10px] text-steel-500 font-semibold">${activos.length} activo(s) de ${sellers.length}</span>
             </div>
             <select id="login-name" class="input" ${activos.length ? '' : 'disabled'}>
               ${activos.length ? opts : '<option value="">Sin vendedores registrados</option>'}
@@ -1173,11 +1215,11 @@
             <label class="lbl" id="pass-lbl" for="login-pass">${isSeller ? 'Clave de acceso (PIN) *' : 'Contraseña de Administración *'}</label>
             <input type="password" id="login-pass" class="input font-mono tracking-widest text-lg text-center"
                    inputmode="${isSeller ? 'numeric' : 'text'}" maxlength="${isSeller ? 4 : 24}"
-                   placeholder="${isSeller ? '••••' : '••••••••••'}" autocomplete="current-password"
+                   placeholder="${isSeller ? '••••' : '••••••••••'}" autocomplete="current-password" value="${esc(prevPass)}"
                    onkeydown="if(event.key==='Enter')doLogin()">
           </div>
 
-          <button onclick="doLogin()" class="btn-navy w-full py-3 rounded-xl font-bold text-sm" ${isSeller && !activos.length ? 'disabled' : ''}>
+          <button onclick="doLogin()" data-login-submit class="btn-navy w-full py-3 rounded-xl font-bold text-sm" ${isSeller && !activos.length ? 'disabled' : ''}>
             <i class="fa-solid fa-right-to-bracket"></i> Ingresar al sistema
           </button>
         </div>
@@ -1834,7 +1876,7 @@
       return `
   <div class="p-4 pb-24 max-w-5xl mx-auto space-y-5 anim-up">
     <div>
-      <div class="kicker mb-1">Fuerza comercial · ${activeSellers().length} activos</div>
+      <div class="kicker mb-1" id="crew-activos">Fuerza comercial · ${activeSellers().length} activos</div>
       <h2 class="text-xl font-bold text-navy-900 font-disp">Control de jornada</h2>
     </div>
     <div id="crew-body">${crewBodyHTML()}</div>
@@ -1851,7 +1893,7 @@
       <span class="flex items-center gap-2">
         <i class="fa-solid fa-users-gear text-acc-dark"></i>
         <span class="sec-title">Gestión de vendedores</span>
-        <span class="chip bg-navy-50 text-navy-700 border border-navy-100 ml-1">${active.length} activo(s) · ${sellers.length - active.length} de baja</span>
+        <span id="crew-chip" class="chip bg-navy-50 text-navy-700 border border-navy-100 ml-1">${active.length} activo(s) · ${sellers.length - active.length} de baja</span>
         <span class="chip bg-acc-soft text-acc-dark border border-acc/40">Solo Oficina</span>
       </span>
       <i class="fa-solid fa-chevron-down text-steel-400 transition-transform group-open:rotate-180"></i>
@@ -1886,13 +1928,13 @@
       </div>
     </form>
 
-    <div class="space-y-0.5">
+    <div class="space-y-0.5" id="seller-rows">
       ${sellers.length ? sellers.map((s, i) => sellerRowHTML(s, i)).join('')
       : `<div class="text-sm text-steel-500 text-center py-6">No hay vendedores registrados. Agrega el primero con el formulario superior.</div>`}
     </div>
   </details>
 
-  <div class="grid md:grid-cols-2 gap-4">
+  <div class="grid md:grid-cols-2 gap-4" id="crew-cards">
     ${sellers.length ? sellers.map(u => crewCardHTML(u, today)).join('')
       : `<div class="card md:col-span-2 text-sm text-steel-500 text-center py-8">No hay vendedores registrados. Agrega el primero desde la gestión superior.</div>`}
   </div>`;
@@ -1976,14 +2018,30 @@
   </div>`;
     }
 
-    /* Re-render preservando el estado `open` de la tarjeta grande de gestión */
+    /* FIX E: re-render QUIRÚRGICO de la vista Jornada. Solo repinta las
+       LISTAS (filas de gestión + tarjetas) y los contadores. El formulario
+       de registro (#sellerForm) JAMÁS se toca: aunque llegue un snapshot de
+       Firestore con el formulario a medio llenar, no se pierde nada. */
     function renderCrew() {
-      const el = document.getElementById('crew-body');
-      if (!el) return;
-      const prevOpen = document.getElementById('sellerMgmt')?.open;
-      el.innerHTML = crewBodyHTML();
-      const d = document.getElementById('sellerMgmt');
-      if (d) d.open = (prevOpen === undefined) ? true : prevOpen;
+      const rows = document.getElementById('seller-rows');
+      const cards = document.getElementById('crew-cards');
+      if (!rows || !cards) {
+        const el = document.getElementById('crew-body');
+        if (el) { el.innerHTML = crewBodyHTML(); return; }
+        renderView(); /* la vista no está montada todavía: montaje completo */
+        return;
+      }
+      const sellers = getSellers();
+      const active = sellers.filter(isSellerActive);
+      const today = (db.orders || []).filter(o => o.ts >= t0());
+      rows.innerHTML = sellers.length ? sellers.map((s, i) => sellerRowHTML(s, i)).join('')
+        : `<div class="text-sm text-steel-500 text-center py-6">No hay vendedores registrados. Agrega el primero con el formulario superior.</div>`;
+      cards.innerHTML = sellers.length ? sellers.map(u => crewCardHTML(u, today)).join('')
+        : `<div class="card md:col-span-2 text-sm text-steel-500 text-center py-8">No hay vendedores registrados. Agrega el primero desde la gestión superior.</div>`;
+      const chip = document.getElementById('crew-chip');
+      if (chip) chip.textContent = `${active.length} activo(s) · ${sellers.length - active.length} de baja`;
+      const top = document.getElementById('crew-activos');
+      if (top) top.textContent = `Fuerza comercial · ${active.length} activos`;
     }
     function ensureSellerMgmtOpen() {
       const d = document.getElementById('sellerMgmt');
@@ -2149,38 +2207,49 @@
     }
 
     /* ============================ 16. CRUD DE VENDEDORES (solo admin + Firestore en vivo) ============================ */
-    /* PRESERVADO: creación, edición, baja/reactivación y eliminación funcionan igual que antes */
-    function saveSellerForm(e) {
-      e.preventDefault();
-      if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
-      const name = ($('#s-name').value || '').trim();
-      const id = ($('#s-id').value || '').trim();
-      const zone = ($('#s-zone').value || '').trim();
-      const pin = ($('#s-pin').value || '').trim();
-      const editId = $('#s-editId').value;
+    /* FIX I: el botón "Registrar vendedor" responde SIEMPRE al primer clic.
+       - El formulario se resuelve desde el propio evento (a prueba de ids duplicados).
+       - Todo el cuerpo va en try/catch: cualquier error inesperado se muestra
+         en un toast visible; jamás falla en silencio. */
+    function saveSellerForm(ev) {
+      if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+      try {
+        if (!isAdmin()) { toast('Acción exclusiva de Administración.', 'bad'); return; }
+        const form = (ev && ev.target && ev.target.elements) ? ev.target : document.getElementById('sellerForm');
+        if (!form) { toast('Formulario no disponible. Vuelve a abrir Gestión de vendedores.', 'bad'); return; }
+        const val = id2 => { const el = form.querySelector('#' + id2); return ((el && el.value) || '').trim(); };
+        const name = val('s-name');
+        const id = val('s-id');
+        const zone = val('s-zone');
+        const pin = val('s-pin');
+        const editId = val('s-editId');
 
-      if (!name || !id || !zone || !pin) { toast('Completa todos los campos.', 'warn'); return; }
-      if (!/^\d{4}$/.test(pin)) { toast('El PIN debe tener exactamente 4 dígitos.', 'warn'); return; }
-      if (getSellers().some(s => (s.id || '').toLowerCase() === id.toLowerCase() && s.id !== editId)) {
-        toast('Esa cédula/ID ya está asignada a otro vendedor.', 'warn'); return;
-      }
-      if (getSellers().some(s => (s.name || '').toLowerCase() === name.toLowerCase() && s.id !== editId)) {
-        toast('Ya existe un vendedor con ese nombre (se usa para el login).', 'warn'); return;
-      }
+        if (!name || !id || !zone || !pin) { toast('Completa todos los campos.', 'warn'); return; }
+        if (!/^\d{4}$/.test(pin)) { toast('El PIN debe tener exactamente 4 dígitos.', 'warn'); return; }
+        if (getSellers().some(s => (s.id || '').toLowerCase() === id.toLowerCase() && s.id !== editId)) {
+          toast('Esa cédula/ID ya está asignada a otro vendedor.', 'warn'); return;
+        }
+        if (getSellers().some(s => (s.name || '').toLowerCase() === name.toLowerCase() && s.id !== editId)) {
+          toast('Ya existe un vendedor con ese nombre (se usa para el login).', 'warn'); return;
+        }
 
-      if (editId) {
-        const s = sellerById(editId);
-        if (!s) { toast('El vendedor a editar ya no existe.', 'bad'); return; }
-        if (editId !== id && db.jornada[editId]) { db.jornada[id] = db.jornada[editId]; delete db.jornada[editId]; }
-        s.name = name; s.id = id; s.zone = zone; s.pin = pin;
-        logActivity('fa-user-pen', `Vendedor actualizado: ${name} (${id})`);
-        saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); ensureSellerMgmtOpen();
-        toast(`Ficha de <b>${esc(name)}</b> actualizada y sincronizada.`, 'ok');
-      } else {
-        getSellers().push({ id, name, zone, pin, active: true });
-        logActivity('fa-user-plus', `Vendedor registrado: ${name} (${id}) — zona ${zone}`);
-        saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); ensureSellerMgmtOpen();
-        toast(`<b>${esc(name)}</b> registrado. Ya puede iniciar sesión con su PIN desde cualquier teléfono.`, 'ok');
+        if (editId) {
+          const s = sellerById(editId);
+          if (!s) { toast('El vendedor a editar ya no existe.', 'bad'); return; }
+          if (editId !== id && db.jornada[editId]) { db.jornada[id] = db.jornada[editId]; delete db.jornada[editId]; }
+          s.name = name; s.id = id; s.zone = zone; s.pin = pin;
+          logActivity('fa-user-pen', `Vendedor actualizado: ${name} (${id})`);
+          saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); ensureSellerMgmtOpen();
+          toast(`Ficha de <b>${esc(name)}</b> actualizada y sincronizada.`, 'ok');
+        } else {
+          getSellers().push({ id, name, zone, pin, active: true });
+          logActivity('fa-user-plus', `Vendedor registrado: ${name} (${id}) — zona ${zone}`);
+          saveDB(); queueCloudSync(0); resetSellerForm(); renderCrew(); ensureSellerMgmtOpen();
+          toast(`<b>${esc(name)}</b> registrado. Ya puede iniciar sesión con su PIN desde cualquier teléfono.`, 'ok');
+        }
+      } catch (err) {
+        console.error('saveSellerForm:', err);
+        toast('No se pudo guardar el vendedor: ' + esc((err && err.message) || err), 'bad', 6000);
       }
     }
 
@@ -2559,6 +2628,42 @@
     }
 
     /* ============================ 19. MOTOR DE RENDERIZADO (filtrado por rol) ============================ */
+    /* ¿Está el usuario escribiendo o con un desplegable abierto? Evita
+       reconstruir la pantalla debajo de sus dedos. */
+    function userIsTyping() {
+      const a = document.activeElement;
+      return !!(a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT'));
+    }
+    let renderDeferTimer = null;
+
+    function renderCurrent() {
+      /* FIX F: si el usuario está a medio escribir/seleccionar, el repintado
+         se pospone 1,2 s y se reintenta solo. Lo tecleado JAMÁS se pierde
+         por culpa de un snapshot entrante de la nube. */
+      if (userIsTyping()) {
+        if (!renderDeferTimer) {
+          renderDeferTimer = setTimeout(() => { renderDeferTimer = null; renderCurrent(); }, 1200);
+        }
+        return;
+      }
+      if (session && validateSession() && document.querySelector('[data-nav]')) {
+        if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
+        /* FIX G: en Jornada el repintado es quirúrgico (listas sí, formulario
+           de registro NO) para que la sincronización en vivo jamás borre el
+           formulario a medio llenar. */
+        if (ui.view === 'crew') renderCrew(); else renderView();
+        setNav();
+        if (ui.view === 'catalog') renderFilterCatalogGrid();
+      } else {
+        /* FIX H: si el login ya está en pantalla, SOLO se refresca el
+           desplegable de vendedores. Antes se reconstruía todo el innerHTML
+           en cada snapshot: eso borraba el PIN, colapsaba el <select> y
+           anulaba el primer clic. */
+        if (document.getElementById('login-role')) refreshLoginSellers();
+        else renderLogin();
+      }
+    }
+
     function renderView() {
       const v = $('#view');
       if (!v) return;
@@ -2627,4 +2732,3 @@ function initApp() {
 </body>
 
 </html>
-
