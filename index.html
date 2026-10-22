@@ -1,6 +1,6 @@
-
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -33,11 +33,7 @@
       }
     };
   </script>
-  <script>
-    // Inicialización del estado global de la PWA para evitar pantallas en blanco
-    window.ui = window.ui || { view: 'catalog' };
-    window.cloudReady = window.cloudReady || false;
-</script>
+
   <!-- Firebase (Firestore) — defer: no bloquea el render; ejecuta antes de DOMContentLoaded -->
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -226,26 +222,6 @@
       cursor: pointer;
       transition: color 0.2s;
     }
-
-    /* ---- FIX MÓVIL (Catálogo en el teléfono) ---- */
-    /* 1) touch-action: manipulation elimina el retardo y el zoom por doble
-       toque en cada botón (iOS/Android): los toques en Catálogo/Pedido
-       responden al instante. tap-highlight transparente = feedback limpio. */
-    button,
-    .nav-item,
-    .chip {
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    /* 2) Safe-area: con viewport-fit=cover la barra inferior queda bajo la
-       zona de gestos del iPhone (home indicator) / barra de gestos Android.
-       Sin este padding, ESA franja se comía los toques sobre los botones de
-       navegación: "toco Catálogo y no abre". El padding empuja los botones
-       por encima de la zona de gestos y el toque siempre cae en el botón. */
-    .bottom-nav {
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-    }
   </style>
 
   <style>
@@ -338,6 +314,27 @@
     input[type=number] {
       -moz-appearance: textfield
     }
+
+    /* MÓVIL/TÁCTIL: elimina el retardo de 300 ms y el zoom por doble toque en
+       todos los controles. Sin esto, en el teléfono los toques "se cuelan"
+       o tardan en registrar y la navegación al catálogo se siente muerta. */
+    button,
+    a,
+    input,
+    select,
+    summary,
+    .btn,
+    .btn-amber,
+    .btn-navy,
+    .btn-line,
+    .btn-ok,
+    .btn-bad,
+    .chip,
+    .nav-item,
+    .tag {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent
+    }
   </style>
 </head>
 
@@ -368,10 +365,11 @@
     const EMPRESA = { name: 'Truck Filters, c.a.', rif: 'J-40127144-8', addr: 'Av. Principal, Zona Industrial Municipal Norte, Galpón 4, Valencia — Edo. Carabobo', tel: '+58 241-500.22.44' };
     /* Versión visible en el login: permite verificar en el teléfono que el
        archivo desplegado es ESTA compilación (diagnóstico de caché/PWA). */
-    const APP_VERSION = 'v2.4-fix';
+    const APP_VERSION = 'v2.4-fix'; /* móvil: táctil + enrutado + cesta no destructiva */
 
     const DB_KEY = 'tf_db_v2';
     const SESS_KEY = 'tf_session_v2';
+    const SESS_PERSIST = 'tf_session_last'; /* espejo en localStorage para la PWA móvil */
     const CART_PRE = 'tf_cart_';
     const IVA_RATE = 0.16;
     /* Contraseña administrativa OBLIGATORIA para acceder al panel de oficina */
@@ -451,14 +449,13 @@
 
     /* ============================ 3.5 CAPA DE NUBE & SINCRONIZACIÓN ============================ */
     const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAT6BqMZttmKTXHg0VF4UN-K7V-7QaafeY",
-  authDomain: "truck-filters.firebaseapp.com",
-  projectId: "truck-filters",
-  storageBucket: "truck-filters.appspot.com",
-  messagingSenderId: "45278506796",
-  appId: "1:45278506796:web:89a0b69c15e71872930689",
-  measurementId: "G-ZTS5THYRYK"
-};
+      apiKey: "AIzaSyAT6BqMzttmKTXHg0VF4UN-K7V-7QaafyE",
+      authDomain: "truck-filters.firebaseapp.com",
+      projectId: "truck-filters",
+      storageBucket: "truck-filters.firebasestorage.app",
+      messagingSenderId: "45278506796",
+      appId: "1:45278506796:web:89a0b69c15e71872930689"
+    };
 
     const CLOUD_DOC = 'truckfilters/state';
     const CLIENT_ID = 'C' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -706,6 +703,21 @@
       if (e.key === 'Escape' && modalOpen()) { e.preventDefault(); closeModal(); }
     });
 
+    /* ====================== 4b. EVENTOS TÁCTILES (MÓVIL) ======================
+       En el teléfono un tap viaja touchstart → touchend → click con retardo
+       (100-500 ms; más en PWA). Si un snapshot de Firestore o el repintado
+       diferido reconstruía el DOM en ese intervalo, el elemento tocado se
+       DESTRUYA y el click NUNCA se disparaba: por eso "los botones no
+       responden" y el catálogo no abría en el celular, mientras que en la
+       laptop el clic es instantáneo y todo funcionaba. Solución: marcar el
+       instante del último toque y posponer TODO repintado automático mientras
+       haya un tap en vuelo. Los toques del usuario NUNCA se pierden. */
+    let lastTapAt = 0;
+    const touchInFlight = () => (Date.now() - lastTapAt) < 900;
+    const markTouch = () => { lastTapAt = Date.now(); };
+    document.addEventListener('touchstart', markTouch, { passive: true, capture: true });
+    document.addEventListener('pointerdown', markTouch, { passive: true, capture: true });
+
     function confirmDialog(title, msg, okLabel, onOk, danger = true) {
       openModal(`
     <div class="p-6 space-y-4">
@@ -850,6 +862,21 @@
     /* ============================ 7. ESTADO GLOBAL ============================ */
     let session = null;
     try { session = JSON.parse(sessionStorage.getItem(SESS_KEY) || 'null'); } catch (e) { session = null; }
+    /* MÓVIL/PWA: en iOS la app independiente puede vaciar sessionStorage al
+       suspenderse. Si no hay sesión en sessionStorage, se restaura la del
+       último login guardada en localStorage. validateSession() la revalida
+       contra la lista de vendedores, así que es seguro (un vendedor dado de
+       baja sigue siendo expulsado). */
+    if (!session) {
+      try { session = JSON.parse(localStorage.getItem(SESS_PERSIST) || 'null'); } catch (e) { session = null; }
+      if (session) { try { sessionStorage.setItem(SESS_KEY, JSON.stringify(session)); } catch (e) { } }
+    }
+    /* Guardado tolerante de la sesión: en modo privado o con cuota llena
+       setItem lanza una excepción y antes TUMBABA el login a mitad de uso. */
+    function persistSession() {
+      try { sessionStorage.setItem(SESS_KEY, JSON.stringify(session)); } catch (e) { }
+      try { localStorage.setItem(SESS_PERSIST, JSON.stringify(session)); } catch (e) { }
+    }
 
     let cart = [];
     const ui = {
@@ -872,6 +899,18 @@
       if (session) setNav();
     }
     const cartCount = () => cart.reduce((a, l) => a + l.qty, 0);
+
+    /* ==== BORRADOR NO DESTRUCTIVO del formulario de pedido (mismo tratamiento
+       userIsTyping() del registro, pero a prueba de TODO) ====
+       Los datos del cliente viven en cartDraft; cada tecla los actualiza y
+       viewCart() SIEMPRE repinta estos valores. Así, un push de Firestore,
+       un cambio de cantidad o CUALQUIER re-render JAMÁS borra lo escrito,
+       el teclado móvil no se cierra y el carrito queda intacto. */
+    const cartDraft = { name: '', rif: '', contact: '', phone: '', address: '' };
+    let lastCartEditAt = 0;
+    const cartEditBusy = () => (Date.now() - lastCartEditAt) < 1500;
+    function cartDraftSave(k, v) { cartDraft[k] = v; lastCartEditAt = Date.now(); }
+    function cartDraftClear() { Object.keys(cartDraft).forEach(k => { cartDraft[k] = ''; }); lastCartEditAt = 0; }
 
     function addToCart(code, qty = 1, silent = false) {
       const p = prod(code);
@@ -917,6 +956,7 @@
       if (!cart.length) { renderView(); setNav(); return; }
       confirmDialog('Vaciar pedido', `¿Eliminar <b>todos</b> los artículos de la cesta (${cartCount()} u)?`, 'Vaciar', () => {
         cart = [];
+        cartDraftClear(); /* los datos del cliente también se limpian a propósito */
         saveCart();
         renderView(); setNav();
         toast('Pedido vaciado.', 'warn');
@@ -931,52 +971,6 @@
       return { subtotal, tax, total: round2(subtotal + tax), saving: round2(atList - subtotal) };
     }
 
-    /* ============================ FIX 2 · CESTA NO DESTRUCTIVA ============================
-       Mismo tratamiento userIsTyping() que usamos en el registro, ahora para
-       el pedido/cesta: mientras el vendedor escribe cantidades o datos del
-       cliente, un push de sincronización de Firestore JAMÁS borra lo tecleado
-       ni el carrito.
-       - cartDraft: copia persistente (localStorage) de los 5 campos del
-         cliente. Sobrevive a CUALQUIER re-render y hasta a recargas.
-       - saveCartDraft(): llamado en cada oninput de los campos.
-       - restoreCartDraft(): repone los valores tras cada repintado.
-       - cartDraftHasContent(): si hay datos a medio llenar, renderCurrent()
-         NO reconstruye la vista (ver sección 19) — solo la cesta local manda. */
-    const CART_DRAFT_KEY = 'tf_cart_draft_v1';
-    const emptyCartDraft = () => ({ name: '', rif: '', contact: '', phone: '', address: '' });
-    let cartDraft = emptyCartDraft();
-    try {
-      const __savedDraft = JSON.parse(localStorage.getItem(CART_DRAFT_KEY) || 'null');
-      if (__savedDraft && typeof __savedDraft === 'object') cartDraft = { ...emptyCartDraft(), ...__savedDraft };
-    } catch (e) { }
-
-    function saveCartDraft() {
-      if (!session || ui.view !== 'cart') return;
-      const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-      cartDraft = {
-        name: g('c-name'), rif: g('c-rif'), contact: g('c-contact'),
-        phone: g('c-phone'), address: g('c-address')
-      };
-      try { localStorage.setItem(CART_DRAFT_KEY, JSON.stringify(cartDraft)); } catch (e) { }
-    }
-
-    function restoreCartDraft() {
-      const map = { 'c-name': 'name', 'c-rif': 'rif', 'c-contact': 'contact', 'c-phone': 'phone', 'c-address': 'address' };
-      Object.keys(map).forEach(id => {
-        const el = document.getElementById(id);
-        if (el && !el.value && cartDraft[map[id]]) el.value = cartDraft[map[id]];
-      });
-    }
-
-    function cartDraftHasContent() {
-      return !!(cartDraft.name || cartDraft.rif || cartDraft.contact || cartDraft.phone || cartDraft.address);
-    }
-
-    function clearCartDraft() {
-      cartDraft = emptyCartDraft();
-      try { localStorage.removeItem(CART_DRAFT_KEY); } catch (e) { }
-    }
-
     /* ============================ 9. AUTENTICACIÓN ============================ */
     function isAdmin() { return !!(session && session.role === 'admin'); }
 
@@ -985,14 +979,28 @@
       if (!session) return false;
       if (session.role === 'seller') {
         const u = sellerById(session.id);
-        if (!isSellerActive(u)) {
-          sessionStorage.removeItem(SESS_KEY);
+        if (u && !isSellerActive(u)) {
+          try { sessionStorage.removeItem(SESS_KEY); } catch (e) { }
+          try { localStorage.removeItem(SESS_PERSIST); } catch (e) { }
           session = null; cart = [];
           toast('Tu cuenta de vendedor fue eliminada o desactivada por Administración.', 'warn', 4500);
           return false;
         }
+        /* Baja/eliminación REAL: la lista local existe y el vendedor no está. */
+        if (!u && getSellers().length) {
+          try { sessionStorage.removeItem(SESS_KEY); } catch (e) { }
+          try { localStorage.removeItem(SESS_PERSIST); } catch (e) { }
+          session = null; cart = [];
+          toast('Tu cuenta de vendedor fue eliminada o desactivada por Administración.', 'warn', 4500);
+          return false;
+        }
+        /* MÓVIL: si la copia local está VACÍA (app recién despertada, cuota
+           llena o primer arranque) el vendedor "no aparece" sin haber sido
+           dado de baja. NO se cierra la sesión ni se toca el carrito: se
+           pide la lista a la nube y se espera. */
+        if (!u) { loginCloudFetch(); return true; }
         session.name = u.name;
-        sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
+        persistSession();
         return true;
       }
       if (session.role === 'admin') return true;
@@ -1081,7 +1089,22 @@
       setSellerActive(identifier, s ? !isSellerActive(s) : true);
     }
 
+    /* Estados visuales del botón "Ingresar al sistema" durante la verificación
+       (evita el doble envío típico del teléfono sin bloquear la pantalla). */
+    function setLoginBusy(on) {
+      const btn = document.querySelector('#app button[data-login-submit]');
+      if (btn) {
+        btn.disabled = !!on;
+        btn.innerHTML = on
+          ? '<i class="fa-solid fa-spinner fa-spin"></i> Verificando clave…'
+          : '<i class="fa-solid fa-right-to-bracket"></i> Ingresar al sistema';
+      }
+    }
+
     function doLogin() {
+      /* Anti-doble-toque: si ya hay una verificación en vuelo, este toque se
+         ignora en silencio (el botón muestra "Verificando clave…"). */
+      if (window.__loginBusy) return;
       loadDB(); /* estado local como base; abajo se refresca contra el servidor si hay nube */
       const role = $('#login-role')?.value || 'seller';
       const cred = ($('#login-pass')?.value || '').trim();
@@ -1091,13 +1114,14 @@
         if (!cred) { toast('Ingresa la contraseña administrativa.', 'warn'); return; }
         if (cred !== ADMIN_USER.pass) { toast('Contraseña administrativa incorrecta.', 'bad'); return; }
         session = { id: 'ADMIN', name: ADMIN_USER.name, role: 'admin' };
-        sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
+        persistSession();
         ui.view = defaultView(); loadCart(); initApp();
         toast(`¡Bienvenido, <b>${esc(session.name)}</b>!`, 'ok');
         return;
       }
 
       const finish = () => {
+        window.__loginBusy = false; setLoginBusy(false); /* libera el botón pase lo que pase */
         const all = getSellers();
         if (!all.length) { toast('No hay vendedores registrados. Solicita a Administración registrar uno.', 'bad'); return; }
         if (!nameSel) { toast('Selecciona tu nombre de vendedor.', 'warn'); return; }
@@ -1111,13 +1135,17 @@
         }
         if (cred !== String(u.pin)) { toast(`Clave (PIN) incorrecta para <b>${esc(u.name)}</b>.`, 'bad'); return; }
         session = { id: u.id, name: u.name, role: 'seller' };
-        sessionStorage.setItem(SESS_KEY, JSON.stringify(session));
+        persistSession();
         ui.view = defaultView(); loadCart(); initApp();
         toast(`¡Bienvenido, <b>${esc(session.name)}</b>!`, 'ok');
       };
 
       /* El PIN se valida contra el ESTADO DEL SERVIDOR, no contra la copia local vieja */
       if (cloudReady && navigator.onLine) {
+        /* MÓVIL: bloqueo anti-doble-toque. Antes cada toque lanzaba un get()
+           nuevo a la nube y varios initApp() en paralelo; el botón se
+           deshabilita y muestra "Verificando clave…" hasta responder. */
+        window.__loginBusy = true; setLoginBusy(true);
         setCloudStatus('sync');
         const r = cloudRef();
         if (!r) { finish(); return; }
@@ -1157,9 +1185,10 @@
 
     function logout() {
       confirmDialog('Cerrar sesión', '¿Salir del sistema? Los datos locales se conservan en este dispositivo.', 'Salir', () => {
-        sessionStorage.removeItem(SESS_KEY);
+        try { sessionStorage.removeItem(SESS_KEY); } catch (e) { }
+        try { localStorage.removeItem(SESS_PERSIST); } catch (e) { }
         session = null; cart = [];
-        clearCartDraft(); /* FIX 2: el borrador del cliente no se filtra al siguiente vendedor que use este equipo */
+        cartDraftClear();
         ui.view = 'catalog';
         renderLogin();
       }, false);
@@ -1209,7 +1238,7 @@
       const roleEl = document.getElementById('login-role');
       const role = (roleEl && roleEl.value) || sessionStorage.getItem('preferred_login_role') || 'seller';
       const btn = document.querySelector('#app button[data-login-submit]');
-      if (btn) btn.disabled = (role === 'seller' && !activos.length);
+      if (btn) btn.disabled = window.__loginBusy ? true : (role === 'seller' && !activos.length);
       const hint = document.getElementById('seller-hint');
       if (hint && !activos.length) {
         hint.className = `text-[10px] mt-1.5 font-semibold ${cloudStatus === 'ok' ? 'text-amber-600' : 'text-red-500'}`;
@@ -1347,9 +1376,15 @@
     const navIdsFor = () => navFor().map(n => n.id);
     const defaultView = () => (session && session.role === 'admin') ? 'dash' : 'catalog';
 
-    /* La definición ÚNICA de renderCurrent() vive en la sección 19, junto a
-       userIsTyping(): evita duplicaciones y hace el repintado remoto 100 %
-       no destructivo (typing + gestos + borrador de la cesta). */
+    function renderCurrent() {
+      if (session && validateSession() && document.querySelector('[data-nav]')) {
+        if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
+        renderView(); setNav();
+        if (ui.view === 'catalog') renderFilterCatalogGrid();
+      } else {
+        renderLogin();
+      }
+    }
 
     function renderShell() {
       const nav = navFor();
@@ -1389,7 +1424,7 @@
     <main class="flex-1">
       <div id="view"></div>
     </main>
-    <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-sm border-t border-steel-200 shadow-lg flex z-50 bottom-nav" aria-label="Navegación principal">
+    <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-sm border-t border-steel-200 shadow-lg flex z-50" aria-label="Navegación principal">
       ${nav.map(n => `
         <button onclick="go('${n.id}')" data-nav="${n.id}" class="nav-item text-steel-500" aria-label="${esc(n.label)}">
           <i class="fa-solid ${n.icon} text-lg"></i>
@@ -1407,54 +1442,18 @@
       document.title = (t ? t + ' — ' : '') + 'Truck Filters, c.a.';
     }
 
-    /* FIX M2 (móvil): enrutamiento ui.view a prueba de balas.
-       - Anti doble disparo: la capa táctil (FIX M3) acelera el toque y el
-         click sintético posterior se ignora (600 ms) — sin navegaciones dobles.
-       - AUTO-REPARACIÓN: si por cualquier motivo el shell no está montado
-         (restauración del navegador, PWA reanudada, re-render a medias), se
-         reconstruye ANTES de pintar. Antes, si #view no existía, renderView()
-         salía en silencio: en el teléfono eso se veía como "toco Catálogo y
-         no pasa nada".
-       - scrollTo protegido (iOS antiguo lanza excepción con options). */
     function go(v) {
-      const now = Date.now();
-      if (go.__last && go.__last.v === v && (now - go.__last.t) < 600) return; /* absorbe click sintético tras touchstart */
-      go.__last = { v, t: now };
       if (!session) { renderLogin(); return; }
       const ids = navIdsFor();
       ui.view = ids.includes(v) ? v : defaultView(); /* un vendedor jamás navega a vistas admin */
       closeModal();
-      if (!document.querySelector('[data-nav]')) { renderShell(); } /* shell ausente: reconstruir y reintentar */
+      /* MÓVIL: si el shell no está montado todavía (sesión restaurada al
+         despertar la PWA, primer snapshot antes del arranque), se monta ANTES
+         de pintar; sin esto #view no existe y el catálogo "no abre". */
+      if (!document.querySelector('[data-nav]')) renderShell();
       renderView(); setNav(); setTitle();
       try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { try { window.scrollTo(0, 0); } catch (e2) { } }
     }
-
-    /* FIX M3 (móvil): detección de TOQUE REAL sobre la barra inferior.
-       touchstart guarda el botón y la posición; touchend confirma que fue un
-       tap (mismo botón, sin arrastre, menos de 900 ms) y navega AL INSTANTE, sin
-       depender del click sintético (que en móviles puede perderse si un
-       snapshot de Firestore repinta el DOM justo en esa fracción de segundo).
-       Listeners delegados en document: sobreviven a TODOS los re-render del
-       shell. El click posterior que llegue queda absorbido por el anti doble
-       disparo de go(). */
-    let __navTouch = null;
-    document.addEventListener('touchstart', e => {
-      const b = (e.target && e.target.closest) ? e.target.closest('[data-nav]') : null;
-      if (!b) return;
-      const t = e.touches && e.touches[0];
-      __navTouch = { btn: b, x: t ? t.clientX : 0, y: t ? t.clientY : 0, t: Date.now() };
-    }, { passive: true });
-    document.addEventListener('touchend', e => {
-      if (!__navTouch) return;
-      const nt = __navTouch; __navTouch = null;
-      const b = (e.target && e.target.closest) ? e.target.closest('[data-nav]') : null;
-      if (!b || b !== nt.btn) return; /* el dedo cambió de botón: no es tap */
-      const t = e.changedTouches && e.changedTouches[0];
-      const moved = t ? Math.hypot(t.clientX - nt.x, t.clientY - nt.y) : 0;
-      if (moved <= 24 && (Date.now() - nt.t) < 900) {
-        try { go(nt.btn.dataset.nav); } catch (err) { console.error('navTap:', err); }
-      }
-    }, { passive: true });
 
     function setNav() {
       document.querySelectorAll('[data-nav]').forEach(b => {
@@ -1493,41 +1492,49 @@
     /* ============================ 11. VISTAS — COMERCIAL ============================ */
     function productCards() {
       const q = (ui.catQ || '').toLowerCase().trim();
-      /* FIX M5 (móvil): mientras la copia local sigue vacía (primer arranque
-         en un teléfono, red lenta, pull de Firestore pendiente), se muestran
-         las referencias base en lugar de una rejilla vacía. En cuanto llega
-         la nube, applyRemote repinta con el inventario real. */
-      const src = (db && Array.isArray(db.products) && db.products.length) ? db.products : PRODUCTS;
-      const list = src
+      const list = (db && Array.isArray(db.products) ? db.products : PRODUCTS)
         .filter(p => ui.catType === 'todos' || p.type === ui.catType)
-        .filter(p => !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || (p.app || []).some(a => a.toLowerCase().includes(q)));
+        .filter(p => !q || String(p.name || '').toLowerCase().includes(q) || String(p.code || '').toLowerCase().includes(q) || (Array.isArray(p.app) ? p.app : []).some(a => String(a).toLowerCase().includes(q)));
       if (!list.length) {
         return `<div class="card col-span-full text-center py-10 space-y-2">
       <i class="fa-solid fa-filter-circle-xmark text-3xl text-steel-300"></i>
       <p class="text-sm text-steel-500">Sin resultados para tu búsqueda.</p>
     </div>`;
       }
-      return list.map(p => `
+      /* MÓVIL: cada tarjeta se genera en su propio try/catch. Un registro
+         defectuoso llegado de la nube ya NO deja el catálogo entero en
+         blanco en el teléfono (antes "no renderizaba los productos"). */
+      return list.map(p => {
+        try {
+          const code = String(p.code || '');
+          const name = String(p.name || code || 'Producto');
+          const apps = Array.isArray(p.app) ? p.app : [];
+          const price = Number(p.price) || 0;
+          const stock = Number(p.stock) || 0;
+          const minVol = Number(p.minVol) || 1;
+          return `
     <div class="card flex flex-col gap-3">
       <div class="blueprint rounded-xl border border-steel-200 p-2 flex items-center justify-center">${techSVG(p)}</div>
       <div>
         <div class="flex items-center justify-between gap-2">
-          <span class="text-[10px] font-mono font-bold text-steel-400">${esc(p.code)}</span>
+          <span class="text-[10px] font-mono font-bold text-steel-400">${esc(code)}</span>
           <span class="tag bg-steel-100 text-steel-600"><i class="fa-solid ${(TYPE_META[p.type] || {}).icon || 'fa-filter'}"></i>${(TYPE_META[p.type] || {}).l || esc(p.type)}</span>
         </div>
-        <h3 class="font-semibold text-sm text-navy-900 mt-1">${esc(p.name)}</h3>
-        <p class="text-[11px] text-steel-500 mt-0.5 truncate">${esc((p.app || []).slice(0, 2).join(' · '))}</p>
+        <h3 class="font-semibold text-sm text-navy-900 mt-1">${esc(name)}</h3>
+        <p class="text-[11px] text-steel-500 mt-0.5 truncate">${esc(apps.slice(0, 2).join(' · '))}</p>
       </div>
       <div class="flex items-center justify-between pt-3 border-t border-steel-100 mt-auto">
         <div>
-          <div class="text-base font-bold text-navy-900">${money(p.price)}</div>
-          <div class="text-[10px] font-semibold ${p.stock > 0 ? 'text-emerald-600' : 'text-red-500'}">${p.stock > 0 ? 'Stock: ' + p.stock + ' u · vol. mín ' + p.minVol : 'Agotado'}</div>
+          <div class="text-base font-bold text-navy-900">${money(price)}</div>
+          <div class="text-[10px] font-semibold ${stock > 0 ? 'text-emerald-600' : 'text-red-500'}">${stock > 0 ? 'Stock: ' + stock + ' u · vol. mín ' + minVol : 'Agotado'}</div>
         </div>
-        <button onclick="addToCart('${p.code}',1)" class="btn-amber px-3 py-2 text-xs rounded-xl" ${p.stock <= 0 ? 'disabled' : ''}>
+        <button onclick="addToCart('${code}',1)" class="btn-amber px-3 py-2 text-xs rounded-xl" ${stock <= 0 ? 'disabled' : ''}>
           <i class="fa-solid fa-cart-plus"></i> Agregar
         </button>
       </div>
-    </div>`).join('');
+    </div>`;
+        } catch (err) { console.warn('productCard omitida:', err); return ''; }
+      }).join('');
     }
     function renderProductList() { const el = document.getElementById('product-list'); if (el) el.innerHTML = productCards(); }
 
@@ -1800,16 +1807,15 @@
       <h3 class="sec-title"><i class="fa-solid fa-building-user text-acc-dark mr-1"></i> Datos del cliente</h3>
       <div>
         <label class="lbl">Cliente / Razón social *</label>
-        <input id="c-name" class="input" placeholder="Ej. Transporte Bolívar, C.A." maxlength="80" autocomplete="off"
-               value="${esc(cartDraft.name || '')}" oninput="saveCartDraft()">
+        <input id="c-name" class="input" placeholder="Ej. Transporte Bolívar, C.A." maxlength="80" value="${esc(cartDraft.name)}" oninput="cartDraftSave('name',this.value)">
       </div>
       <div class="grid sm:grid-cols-2 gap-3">
-        <div><label class="lbl">RIF</label><input id="c-rif" class="input font-mono" placeholder="J-12345678-9" maxlength="14" autocomplete="off" value="${esc(cartDraft.rif || '')}" oninput="saveCartDraft()"></div>
-        <div><label class="lbl">Contacto</label><input id="c-contact" class="input" placeholder="Nombre del contacto" maxlength="60" autocomplete="off" value="${esc(cartDraft.contact || '')}" oninput="saveCartDraft()"></div>
+        <div><label class="lbl">RIF</label><input id="c-rif" class="input font-mono" placeholder="J-12345678-9" maxlength="14" value="${esc(cartDraft.rif)}" oninput="cartDraftSave('rif',this.value)"></div>
+        <div><label class="lbl">Contacto</label><input id="c-contact" class="input" placeholder="Nombre del contacto" maxlength="60" value="${esc(cartDraft.contact)}" oninput="cartDraftSave('contact',this.value)"></div>
       </div>
       <div class="grid sm:grid-cols-2 gap-3">
-        <div><label class="lbl">Teléfono</label><input id="c-phone" class="input" placeholder="0414-0000000" maxlength="20" autocomplete="off" inputmode="tel" value="${esc(cartDraft.phone || '')}" oninput="saveCartDraft()"></div>
-        <div><label class="lbl">Dirección de despacho</label><input id="c-address" class="input" placeholder="Dirección" maxlength="120" autocomplete="off" value="${esc(cartDraft.address || '')}" oninput="saveCartDraft()"></div>
+        <div><label class="lbl">Teléfono</label><input id="c-phone" class="input" placeholder="0414-0000000" maxlength="20" value="${esc(cartDraft.phone)}" oninput="cartDraftSave('phone',this.value)"></div>
+        <div><label class="lbl">Dirección de despacho</label><input id="c-address" class="input" placeholder="Dirección" maxlength="120" value="${esc(cartDraft.address)}" oninput="cartDraftSave('address',this.value)"></div>
       </div>
     </div>
     <div class="card space-y-2">
@@ -2165,12 +2171,14 @@
     /* ============================ 15. ACCIONES DE NEGOCIO ============================ */
     function submitOrder() {
       if (!cart.length) { toast('El pedido está vacío.', 'warn'); return; }
-      /* FIX 2: lectura defensiva DOM + respaldo en cartDraft. Si un re-render
-         dejara los campos vacíos, el borrador conserva lo tecleado. */
-      const gVal = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-      const name = (gVal('c-name') || cartDraft.name || '').trim();
+      /* Lee PRIMERO del borrador (sobrevive a cualquier re-render y a los
+         push de la nube) y usa el DOM como respaldo. Los datos del cliente
+         nunca se pierden ni bloquean el envío. */
+      const fval = k => String(cartDraft[k] || '').trim()
+        || (($('#c-' + k) || {}).value ? String($('#c-' + k).value).trim() : '');
+      const name = fval('name');
       if (!name) { toast('Indica el nombre del cliente.', 'warn'); return; }
-      const rif = (gVal('c-rif') || cartDraft.rif || '').trim().toUpperCase();
+      const rif = fval('rif').toUpperCase();
       if (rif && !RIF_OK(rif)) { toast('RIF inválido. Formato esperado: J-12345678-9', 'bad'); return; }
       const t = cartTotals();
       const number = 'TF26-' + String(db.counter).padStart(4, '0');
@@ -2179,9 +2187,9 @@
         id: uid(), number, sellerId: session.id, sellerName: session.name, ts: Date.now(),
         client: {
           name, rif,
-          contact: (gVal('c-contact') || cartDraft.contact || '').trim(),
-          phone: (gVal('c-phone') || cartDraft.phone || '').trim(),
-          address: (gVal('c-address') || cartDraft.address || '').trim()
+          contact: fval('contact'),
+          phone: fval('phone'),
+          address: fval('address')
         },
         items: cart.map(l => ({ ...l })),
         subtotal: t.subtotal, tax: t.tax, total: t.total, status: 'pendiente',
@@ -2189,8 +2197,7 @@
         rejectReason: ''
       });
       logActivity('fa-file-invoice', `Pedido ${number} generado por ${session.name}`);
-      cart = []; saveCart(); saveDB();
-      clearCartDraft(); /* FIX 2: el pedido se envió — el borrador del cliente se limpia */
+      cart = []; cartDraftClear(); saveCart(); saveDB();
       queueCloudSync(0);
       toast(`Pedido <b>${number}</b> enviado a oficina.`, 'ok');
       go('history');
@@ -2578,26 +2585,7 @@
       return FILTER_IMG_FALLBACK;
     }
 
-    /* FIX M6: blindaje de renderFilterCatalogGrid — cualquier error interno
-       (imagen corrupta en localStorage, cuota llena, dato remoto mal formado)
-       se muestra EN PANTALLA con botón Reintentar, en lugar de dejar la
-       rejilla en blanco en silencio (era el síntoma "no renderiza los
-       productos" reportado desde el teléfono). */
     function renderFilterCatalogGrid() {
-      try {
-        return renderFilterCatalogGridInner();
-      } catch (err) {
-        console.error('renderFilterCatalogGrid:', err);
-        const grid = document.getElementById('filterCatalogGrid');
-        if (grid) grid.innerHTML = `<div class="card col-span-full text-center py-10 space-y-2">
-      <i class="fa-solid fa-triangle-exclamation text-3xl text-amber-400"></i>
-      <p class="text-sm text-steel-500">No se pudo dibujar el catálogo visual.</p>
-      <button onclick="renderFilterCatalogGrid()" class="btn-line px-4 py-2 text-xs rounded-xl mx-auto"><i class="fa-solid fa-rotate-right"></i> Reintentar</button>
-    </div>`;
-      }
-    }
-
-    function renderFilterCatalogGridInner() {
       const grid = document.getElementById('filterCatalogGrid');
       if (!grid) return;
       const admin = isAdmin(); /* los botones de edición solo existen para Administración */
@@ -2625,7 +2613,11 @@
         return;
       }
 
-      grid.innerHTML = list.map(f => `
+      /* MÓVIL: tarjeta por tarjeta en su propio try/catch — una ficha
+         defectuosa de la nube ya NO deja la rejilla entera vacía. */
+      grid.innerHTML = list.map(f => {
+        try {
+          return `
     <article class="card p-0 overflow-hidden flex flex-col group">
       <button onclick="openFilterPhoto(${f.__i})" class="relative block bg-steel-50 border-b border-steel-100 overflow-hidden" title="Ampliar fotografía" aria-label="Ampliar fotografía de ${esc(f.codigo)}">
         <img src="${filterImgSrc(f)}" alt="Filtro ${esc(f.codigo)}" loading="lazy"
@@ -2646,7 +2638,9 @@
           <button onclick="deleteFilter(${f.__i})" class="btn-bad px-3 py-1.5 text-xs rounded-lg" aria-label="Eliminar ${esc(f.codigo)}"><i class="fa-solid fa-trash text-xs"></i></button>` : ''}
         </div>
       </div>
-    </article>`).join('');
+    </article>`;
+        } catch (err) { console.warn('filterCard omitida:', err); return ''; }
+      }).join('');
     }
 
     function openFilterPhoto(i) {
@@ -2772,42 +2766,28 @@
     }
     let renderDeferTimer = null;
 
-    /* FIX M4 (móvil): sello de la última interacción física del usuario.
-       Un snapshot de Firestore que llegue EN PLENA pulsación reemplazaba el
-       DOM bajo el dedo y el tap moría sin efecto ("no abre el catálogo").
-       Ahora, si hubo un gesto hace menos de 900 ms y la vista es táctil
-       (catálogo o cesta), el repintado se pospone y se reintenta solo. */
-    let lastUserGestureAt = 0;
-    ['touchstart', 'touchend', 'mousedown', 'click', 'keydown'].forEach(ev => {
-      document.addEventListener(ev, () => { lastUserGestureAt = Date.now(); }, { passive: true, capture: true });
-    });
-
-    /* FIX 2 + FIX M4: ¿es PELIGROSO repintar ahora mismo? Esta es la misma
-       política userIsTyping() del registro, extendida a toda la app:
-       - escribiendo (INPUT/TEXTAREA/SELECT enfocado) → NO repintar;
-       - cesta con datos del cliente a medio llenar → NO repintar (jamás se
-         borra lo tecleado ni el carrito por un push de Firestore);
-       - gesto táctil/clic reciente sobre catálogo o cesta → NO repintar
-         (el tap nunca cae en un DOM que acaba de ser reemplazado). */
-    function remoteRenderIsRisky() {
-      if (userIsTyping()) return true;
-      if (ui.view === 'cart' && cartDraftHasContent()) return true;
-      if ((Date.now() - lastUserGestureAt) < 900 && (ui.view === 'catalog' || ui.view === 'cart')) return true;
-      return false;
-    }
-
     function renderCurrent() {
       /* FIX F: si el usuario está a medio escribir/seleccionar, el repintado
-         se pospone 1,2 s y se reintenta solo. Lo tecleado JAMÁS se pierde
-         por culpa de un snapshot entrante de la nube. */
-      if (remoteRenderIsRisky()) {
+         se pospone y se reintenta solo. Lo tecleado JAMÁS se pierde por
+         culpa de un snapshot entrante de la nube. */
+      /* MÓVIL (táctil): también se pospone si hay un TOQUE en vuelo (el tap
+         tarda 100-500 ms en llegar a click; si la nube reconstruía el DOM
+         en ese intervalo, el elemento tocado desaparecía y el toque se
+         perdía — el catálogo "no abría" en el teléfono). Y en la CESTA se
+         pospone 1,5 s tras la última tecla para que el teclado móvil no se
+         cierre ni se borre nada a medio escribir. */
+      if (userIsTyping() || touchInFlight() || (ui.view === 'cart' && cartEditBusy())) {
         if (!renderDeferTimer) {
-          renderDeferTimer = setTimeout(() => { renderDeferTimer = null; renderCurrent(); }, 1200);
+          renderDeferTimer = setTimeout(() => { renderDeferTimer = null; renderCurrent(); }, 700);
         }
         return;
       }
-      if (session && validateSession() && document.querySelector('[data-nav]')) {
+      if (session && validateSession()) {
         if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
+        /* MÓVIL: sesión válida pero shell sin montar (PWA restaurada, primer
+           snapshot antes del arranque) → se monta el shell en vez de caer al
+           login. El vendedor entra directo al catálogo. */
+        if (!document.querySelector('[data-nav]')) renderShell();
         /* FIX G: en Jornada el repintado es quirúrgico (listas sí, formulario
            de registro NO) para que la sincronización en vivo jamás borre el
            formulario a medio llenar. */
@@ -2864,46 +2844,30 @@
     </div>`;
       }
       v.innerHTML = html;
-      /* FIX 2: repone los datos del cliente del borrador tras CUALQUIER
-         repintado de la cesta (changeQty, removeLine, snapshot remoto…). */
-      if (ui.view === 'cart') restoreCartDraft();
       if (ui.view === 'catalog') renderFilterCatalogGrid();
     }
-
-   /* ======================== 20. ARRANQUE ======================== */
+/* ======================== 20. ARRANQUE ======================== */
 function initApp() {
-    try {
-        loadCart();
-    } catch(e) {
-        console.warn("Aviso en loadCart:", e);
-    }
+    cloudInit(); /* Firestore + tiempo real + caché offline (PWA intacta) */
+    
+    // Forzar la red de Firebase con un pequeño respiro para ganarle la partida al arranque
+    setTimeout(() => {
+        if (typeof firebase !== 'undefined' && firebase.firestore) {
+            firebase.firestore().enableNetwork()
+                .then(() => console.log("¡Red abierta con éxito desde el arranque!"))
+                .catch(err => console.log("Error al abrir red:", err));
+        }
+    }, 1000);
 
-    // Forzar vista inicial si no existe para asegurar el render
-    if (!window.ui) window.ui = { view: 'catalog' };
-    if (!ui.view) ui.view = 'catalog';
-
-    // Pintar la interfaz de inmediato
+    if (!session || !validateSession()) { renderLogin(); return; }
+    loadCart();
+    if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
     renderShell();
     renderView();
-}
-
-window.initApp = initApp;
-
-// Exponer y blindar el arranque para capturar cualquier fallo silencioso
-window.initApp = initApp;
-
-document.addEventListener('DOMContentLoaded', () => {
-    try {
-        initApp();
-    } catch (err) {
-        console.error("❌ Error crítico atrapado en el arranque:", err);
     }
-});
-    /* FIX M7 (móvil): al volver de otra app / BFCache / PWA reanudada, iOS y
-       Android pueden mostrar la pantalla congelada. Un repintado controlado
-       (respeta la política no destructiva) reconecta la interfaz al estado
-       real: sesiones caducadas vuelven al login y las vistas se repintan. */
-    window.addEventListener('pageshow', e => { if (e.persisted) { try { renderCurrent(); } catch (err) { console.error('pageshow:', err); } } });
+    document.addEventListener('DOMContentLoaded', initApp);
+    window.addEventListener('online', () => { updateConnChip(); if (cloudReady) { cloudPull(); if (cloudDirty) queueCloudSync(500); } });
+    window.addEventListener('offline', updateConnChip);
   </script>
 </body>
 
