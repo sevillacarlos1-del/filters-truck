@@ -447,13 +447,14 @@
 
     /* ============================ 3.5 CAPA DE NUBE & SINCRONIZACIÓN ============================ */
     const FIREBASE_CONFIG = {
-      apiKey: "AIzaSyAT6BqMzttmKTXHg0VF4UN-K7V-7QaafyE",
-      authDomain: "truck-filters.firebaseapp.com",
-      projectId: "truck-filters",
-      storageBucket: "truck-filters.firebasestorage.app",
-      messagingSenderId: "45278506796",
-      appId: "1:45278506796:web:89a0b69c15e71872930689"
-    };
+  apiKey: "AIzaSyAT6BqMZttmKTXHg0VF4UN-K7V-7QaafeY",
+  authDomain: "truck-filters.firebaseapp.com",
+  projectId: "truck-filters",
+  storageBucket: "truck-filters.appspot.com",
+  messagingSenderId: "45278506796",
+  appId: "1:45278506796:web:89a0b69c15e71872930689",
+  measurementId: "G-ZTS5THYRYK"
+};
 
     const CLOUD_DOC = 'truckfilters/state';
     const CLIENT_ID = 'C' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -2864,7 +2865,8 @@
       if (ui.view === 'cart') restoreCartDraft();
       if (ui.view === 'catalog') renderFilterCatalogGrid();
     }
-/* ======================== 20. ARRANQUE ======================== */
+
+   /* ======================== 20. ARRANQUE ======================== */
 function initApp() {
     cloudInit(); /* Firestore + tiempo real + caché offline (PWA intacta) */
     
