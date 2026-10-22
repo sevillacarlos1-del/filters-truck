@@ -2887,10 +2887,18 @@ function initApp() {
     if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
     renderShell();
     renderView();
+   }
+
+// Exponer y blindar el arranque para capturar cualquier fallo silencioso
+window.initApp = initApp;
+
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        initApp();
+    } catch (err) {
+        console.error("❌ Error crítico atrapado en el arranque:", err);
     }
-    document.addEventListener('DOMContentLoaded', initApp);
-    window.addEventListener('online', () => { updateConnChip(); if (cloudReady) { cloudPull(); if (cloudDirty) queueCloudSync(500); } });
-    window.addEventListener('offline', updateConnChip);
+});
     /* FIX M7 (móvil): al volver de otra app / BFCache / PWA reanudada, iOS y
        Android pueden mostrar la pantalla congelada. Un repintado controlado
        (respeta la política no destructiva) reconecta la interfaz al estado
