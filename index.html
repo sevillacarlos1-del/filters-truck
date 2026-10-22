@@ -2872,22 +2872,22 @@
 
    /* ======================== 20. ARRANQUE ======================== */
 function initApp() {
-    cloudInit(); /* Firestore + tiempo real + caché offline (PWA intacta) */
-    
-    // Forzar la red de Firebase con un pequeño respiro para ganarle la partida al arranque
-    setTimeout(() => {
-        if (typeof firebase !== 'undefined' && firebase.firestore) {
-            firebase.firestore().enableNetwork()
-                .then(() => console.log("¡Red abierta con éxito desde el arranque!"))
-                .catch(err => console.log("Error al abrir red:", err));
-        }
-    }, 1000);
+    try {
+        loadCart();
+    } catch(e) {
+        console.warn("Aviso en loadCart:", e);
+    }
 
-    loadCart();
-    if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
+    // Forzar vista inicial si no existe para asegurar el render
+    if (!window.ui) window.ui = { view: 'catalog' };
+    if (!ui.view) ui.view = 'catalog';
+
+    // Pintar la interfaz de inmediato
     renderShell();
     renderView();
-   }
+}
+
+window.initApp = initApp;
 
 // Exponer y blindar el arranque para capturar cualquier fallo silencioso
 window.initApp = initApp;
