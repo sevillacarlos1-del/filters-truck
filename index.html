@@ -2878,8 +2878,7 @@ function initApp() {
                 .catch(err => console.log("Error al abrir red:", err));
         }
     }, 1000);
-
-    if (!session || !validateSession()) { renderLogin(); return; }
+    
     loadCart();
     if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
     renderShell();
