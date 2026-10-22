@@ -33,7 +33,11 @@
       }
     };
   </script>
-
+  <script>
+    // Inicialización del estado global de la PWA para evitar pantallas en blanco
+    window.ui = window.ui || { view: 'catalog' };
+    window.cloudReady = window.cloudReady || false;
+</script>
   <!-- Firebase (Firestore) — defer: no bloquea el render; ejecuta antes de DOMContentLoaded -->
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -2878,7 +2882,7 @@ function initApp() {
                 .catch(err => console.log("Error al abrir red:", err));
         }
     }, 1000);
-    
+
     loadCart();
     if (!navIdsFor().includes(ui.view)) ui.view = defaultView();
     renderShell();
